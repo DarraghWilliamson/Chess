@@ -26,9 +26,7 @@ public abstract class PieceObject : MonoBehaviour {
     private void OnMouseDown() {
         if (!gameLogic.MyTurn()) return;
         if ((gameLogic.playerColour != colour) && inDanger) {
-            //gameDisplay.MovePiece(gameDisplay.SelectedPeice.tile, tile);
             gameLogic.MovePeice(gameDisplay.SelectedPeice.tile.num, tile.num);
-            
             return;
         }
         if (!selected && (gameLogic.playerColour == colour)) {
@@ -36,7 +34,7 @@ public abstract class PieceObject : MonoBehaviour {
             gameDisplay.SelectNew(this);
         }
     }
-    
+
     public bool IsEnemy(PieceObject p) {
         if (p.colour == this.colour) return false; else return true;
     }
@@ -72,15 +70,13 @@ public abstract class PieceObject : MonoBehaviour {
         }
     }
 
+
     void ShowMoves() {
-        int c = Array.IndexOf(tiles, tile);
-        Dictionary<int, List<int>> moves = peiceLogic.GetMoves(c, colour);
-        if (moves != null && moves[c].Count != 0) {
-            List<int> move = moves[c];
-            foreach (int i in move) {
-                if (CheckTile(i) == "enpas") {
-                    tiles[i].ShowMoveable(true);
-                }
+        
+        Dictionary<int, List<int>> moves = gameLogic.possableMoves;
+        //moves = gameLogic.GetPossible();
+        if (moves.ContainsKey(tile.num)) {
+            foreach (int i in moves[tile.num]) {
                 if (CheckTile(i) == "move") {
                     if (tiles[i].piece == null) {
                         tiles[i].ShowMoveable(false);

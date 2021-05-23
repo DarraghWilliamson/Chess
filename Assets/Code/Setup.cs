@@ -22,6 +22,7 @@ public class Setup : MonoBehaviour {
         GameDisplay.instance.tiles = tiles;
         GameDisplay.instance.deathBlack = CreateDeathVectors(new Vector3(70, 0, -110), -20, 70);
         GameDisplay.instance.deathWhite = CreateDeathVectors(new Vector3(-70, 0, 110), 20, -70);
+        gameLogic.StartTurn();
     }
 
     public void LoadFEN(string FEN) {

@@ -31,8 +31,7 @@ public class PieceLogic {
         if (char.ToLower(ori) == 'k') moves = GetKingMoves(colour, i, board);
         //if in check disallow any moves that dont get you out of check
         if (gameLogic.check) {
-            Dictionary<int, List<int>> allowedMoves = gameLogic.allowedMoves;
-            MonoBehaviour.print(allowedMoves.Keys.Count);
+            Dictionary<int, List<int>> allowedMoves = gameLogic.possableMoves;
             if (moves == null) return moves;
             foreach (KeyValuePair<int, List<int>> move in moves) {
                 if (!allowedMoves.ContainsKey(move.Key)){

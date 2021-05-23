@@ -27,9 +27,7 @@ public class ArtificialPlayer {
         int from = keys[rand.Next(keys.Count)];
         List<int> options = moves[from];
         int to = options[rand.Next(options.Count)];
-
         gameLogic.MovePeice(from, to);
-        //gameDisplay.MoveObjectAI(from, to);
     }
 
     

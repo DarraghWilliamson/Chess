@@ -12,7 +12,7 @@ public class GameLogic {
     public bool[] Castling;
     public int Enpassant, halfMove, fullMove;
     public bool En, check, checkmate;
-    public Dictionary<int, List<int>> allowedMoves;
+    public Dictionary<int, List<int>> possableMoves;
     ArtificialPlayer artificialPlayer;
 
 
@@ -39,6 +39,8 @@ public class GameLogic {
         artificialPlayer = _artificialPlayer;
         gameDisplay = GameDisplay.instance;
     }
+
+
 
     public Colour GetTurn() {
         return turn;
@@ -172,22 +174,57 @@ public class GameLogic {
         return secsessfulMoves;
     }
 
+    public Dictionary<int, List<int>> GetPossible(Colour colour) {
+        //get all moves
+        Dictionary<int, List<int>> Moves = PieceLogic.instance.GetAllMoves(turn, board);
+        foreach (KeyValuePair<int, List<int>> piece in Moves) {
+            List<int> temp = new List<int>();
+            foreach (int move in piece.Value) {
+                char[] boardClone = (char[])board.Clone();
+                boardClone[move] = board[piece.Key];
+                boardClone[piece.Key] = '\0';
+                //if they put you in check, remove
+
+                char king = colour == Colour.White ? 'K' : 'k';
+                int ind = Array.IndexOf(boardClone, king);
+                Colour enemy = colour == Colour.White ? Colour.Black : Colour.White;
+                Dictionary<int, List<int>> temppp = PieceLogic.instance.GetAllMoves(enemy, boardClone);
+
+
+                if (CheckCheck(turn, boardClone) == true) {
+                    if (piece.Value.Count == 1) {
+                        Moves.Remove(piece.Key);
+                    } else {
+                        temp.Add(move);
+                    }
+                }
+            }
+            if (temp.Count != 0) {
+                foreach (int x in temp) {
+                    piece.Value.Remove(x);
+                }
+            }
+        }
+        return Moves;
+    }
+
         public void StartTurn() {
+        possableMoves = null;
+        //check if in check, if true, check checkmate
+        check = false;
         if (CheckCheck(turn, board)) {
-            allowedMoves = CheckCheckmate(turn);
-            if (allowedMoves.Count == 0) {
-                MonoBehaviour.print("checkmate");
+            possableMoves = CheckCheckmate(turn);
+            if (possableMoves.Count == 0) {
                 checkmate = true;
                 onCheck?.Invoke();
             } else {
-                MonoBehaviour.print("check");
-                MonoBehaviour.print(allowedMoves.Keys.Count);
                 check = true;
                 onCheck?.Invoke();
             }
         } else {
             check = false;
             onCheck?.Invoke();
+            possableMoves = GetPossible(turn);
         }
         
         //if (turn != playerColour) artificialPlayer.TakeTurn();
