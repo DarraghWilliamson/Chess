@@ -14,6 +14,8 @@ public class GameLogic {
     public bool En, check, checkmate;
     public Dictionary<int, List<int>> allowedMoves;
     ArtificialPlayer artificialPlayer;
+
+
     GameDisplay gameDisplay;
 
 
