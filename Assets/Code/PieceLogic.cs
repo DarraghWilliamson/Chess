@@ -29,25 +29,6 @@ public class PieceLogic {
         if (char.ToLower(ori) == 'b') moves = GetBishopMoves(i, board);
         if (char.ToLower(ori) == 'q') moves = GetQueenMoves(i, board);
         if (char.ToLower(ori) == 'k') moves = GetKingMoves(colour, i, board);
-        //if in check disallow any moves that dont get you out of check
-        if (gameLogic.check) {
-            Dictionary<int, List<int>> allowedMoves = gameLogic.possableMoves;
-            if (moves == null) return moves;
-            foreach (KeyValuePair<int, List<int>> move in moves) {
-                if (!allowedMoves.ContainsKey(move.Key)){
-                    if (moves.Keys.Count == 1) {
-                        return null;
-                    } else {
-                        moves.Remove(move.Key);
-                    }
-                } else {
-                    moves[move.Key].Clear();
-                    foreach(int x in allowedMoves[move.Key]) {
-                        moves[move.Key].Add(x);
-                    }
-                }
-            }
-        }
         return moves;
     }
 

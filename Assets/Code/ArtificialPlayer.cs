@@ -18,7 +18,7 @@ public class ArtificialPlayer {
     }
 
     public void TakeTurn() {
-        Dictionary<int, List<int>> moves = PieceLogic.instance.GetAllMoves(AiColour, gameLogic.board);
+        Dictionary<int, List<int>> moves = gameLogic.possableMoves;
         MoveRandom(moves);
     }
     

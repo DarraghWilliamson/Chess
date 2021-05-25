@@ -70,20 +70,11 @@ public abstract class PieceObject : MonoBehaviour {
         }
     }
 
-
     void ShowMoves() {
-        
         Dictionary<int, List<int>> moves = gameLogic.possableMoves;
-        //moves = gameLogic.GetPossible();
         if (moves.ContainsKey(tile.num)) {
             foreach (int i in moves[tile.num]) {
-                if (CheckTile(i) == "move") {
-                    if (tiles[i].piece == null) {
-                        tiles[i].ShowMoveable(false);
-                    } else {
-                        tiles[i].ShowBlocked();
-                    }
-                }
+                if (CheckTile(i) == "move") tiles[i].ShowMoveable(false);
                 if (CheckTile(i) == "take") tiles[i].ShowTakeable();
                 if (CheckTile(i) == "block") tiles[i].ShowBlocked();
             }

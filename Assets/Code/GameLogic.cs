@@ -138,74 +138,59 @@ public class GameLogic {
         StartTurn();
     }
 
-    bool CheckCheck(Colour colour, char[] b) {
-        char king = colour == Colour.White ? 'K' : 'k';
-        int ind = Array.IndexOf(b, king);
-        Colour enemy = colour == Colour.White ? Colour.Black : Colour.White;
+    //return true if sideColour is in check
+    bool CheckCheck(Colour sideColour, char[] b) {
+        char king = sideColour == Colour.White ? 'K' : 'k';
+        int kingPos = Array.IndexOf(b, king);
+        Colour enemy = sideColour == Colour.White ? Colour.Black : Colour.White;
         Dictionary<int, List<int>> temp = PieceLogic.instance.GetAllMoves(enemy, b);
         foreach (KeyValuePair<int, List<int>> x in temp) {
                 foreach (int m in x.Value) {
-                    if (m == ind) return true;
+                    if (m == kingPos) return true;
                 }
         }
         return false;
     }
 
-    Dictionary<int, List<int>> CheckCheckmate(Colour colour) {
-        Dictionary<int, List<int>> secsessfulMoves = new Dictionary<int, List<int>>();
-        //create array of boards where every available move was made
-        Dictionary<int, List<int>> myMoves = PieceLogic.instance.GetAllMoves(colour, board);
-        foreach (KeyValuePair<int, List<int>> piece in myMoves) {
-            foreach(int move in piece.Value) {
-                char[] boardClone = (char[])board.Clone();
-                boardClone[move] = board[piece.Key];
+    //return true if sideColour is in checkmate
+    bool CheckCheckmate(Colour colour, char[] b) {
+        Dictionary<int, List<int>> attemptedMoves = GetAllPossible(colour, b);
+        foreach (KeyValuePair<int, List<int>> piece in attemptedMoves) {
+            foreach (int move in piece.Value) {
+                char[] boardClone = (char[])b.Clone();
+                boardClone[move] = boardClone[piece.Key];
                 boardClone[piece.Key] = '\0';
-                //see if in any of those boards check was escaped
-                if (CheckCheck(colour, boardClone) != true) {
-                    if (secsessfulMoves.ContainsKey(piece.Key)) {
-                        secsessfulMoves[piece.Key].Add(move);
-                    } else {
-                        List<int> ina = new List<int>() { move };
-                        secsessfulMoves.Add(piece.Key, ina);
-                    }
+                //if in any of those moves check was escaped, not checkmate
+                if (CheckCheck(colour, boardClone) == false) {
+                    return false;
                 }
             }
         }
-        return secsessfulMoves;
+        return true;
     }
 
-    public Dictionary<int, List<int>> GetPossible(Colour colour) {
-        //get all moves
-        Dictionary<int, List<int>> Moves = PieceLogic.instance.GetAllMoves(turn, board);
-        foreach (KeyValuePair<int, List<int>> piece in Moves) {
-            List<int> temp = new List<int>();
+    //get all moves that dont place you in check if made
+    public Dictionary<int, List<int>> GetAllPossible(Colour colour, char[] b) {
+        Dictionary<int, List<int>> moves = new Dictionary<int, List<int>>();
+        Dictionary<int, List<int>> temp = PieceLogic.instance.GetAllMoves(turn, b);
+
+        foreach (KeyValuePair<int, List<int>> piece in temp) {
             foreach (int move in piece.Value) {
-                char[] boardClone = (char[])board.Clone();
-                boardClone[move] = board[piece.Key];
+                char[] boardClone = (char[])b.Clone();
+                boardClone[move] = boardClone[piece.Key];
                 boardClone[piece.Key] = '\0';
-                //if they put you in check, remove
-
-                char king = colour == Colour.White ? 'K' : 'k';
-                int ind = Array.IndexOf(boardClone, king);
+                //if they dont put you in check, add
                 Colour enemy = colour == Colour.White ? Colour.Black : Colour.White;
-                Dictionary<int, List<int>> temppp = PieceLogic.instance.GetAllMoves(enemy, boardClone);
-
-
-                if (CheckCheck(turn, boardClone) == true) {
-                    if (piece.Value.Count == 1) {
-                        Moves.Remove(piece.Key);
+                if (!CheckCheck(colour, boardClone)) {
+                    if (moves.ContainsKey(piece.Key)) {
+                        moves[piece.Key].Add(move);
                     } else {
-                        temp.Add(move);
+                        moves.Add(piece.Key, new List<int>() { move });
                     }
                 }
             }
-            if (temp.Count != 0) {
-                foreach (int x in temp) {
-                    piece.Value.Remove(x);
-                }
-            }
         }
-        return Moves;
+        return moves;
     }
 
         public void StartTurn() {
@@ -213,8 +198,7 @@ public class GameLogic {
         //check if in check, if true, check checkmate
         check = false;
         if (CheckCheck(turn, board)) {
-            possableMoves = CheckCheckmate(turn);
-            if (possableMoves.Count == 0) {
+            if (CheckCheckmate(turn, board)) {
                 checkmate = true;
                 onCheck?.Invoke();
             } else {
@@ -224,10 +208,9 @@ public class GameLogic {
         } else {
             check = false;
             onCheck?.Invoke();
-            possableMoves = GetPossible(turn);
         }
-        
-        //if (turn != playerColour) artificialPlayer.TakeTurn();
+        possableMoves = GetAllPossible(turn, board);
+        if (turn != playerColour) artificialPlayer.TakeTurn();
     }
 
     public bool MyTurn() {
