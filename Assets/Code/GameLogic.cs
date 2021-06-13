@@ -11,7 +11,7 @@ public class GameLogic {
     public char[] board;
     public bool[] Castling;
     public int Enpassant, halfMove, fullMove;
-    public bool En, check, checkmate;
+    public bool En, check, checkmate, AiOn;
     public Dictionary<int, List<int>> possableMoves;
     ArtificialPlayer artificialPlayer;
 
@@ -27,7 +27,7 @@ public class GameLogic {
 
     public GameLogic() { instance = this; }
 
-    public void Setup(char[] _board, Colour _turn, Colour _playerColour, bool[] _castling, int _Enpassant, bool _en, int _halfMove, int _fullMove, ArtificialPlayer _artificialPlayer) {
+    public void Setup(char[] _board, Colour _turn, Colour _playerColour, bool[] _castling, int _Enpassant, bool _en, int _halfMove, int _fullMove, ArtificialPlayer _artificialPlayer, bool _AiOn) {
         board = _board;
         turn = _turn;
         playerColour = _playerColour;
@@ -38,6 +38,7 @@ public class GameLogic {
         fullMove = _halfMove;
         artificialPlayer = _artificialPlayer;
         gameDisplay = GameDisplay.instance;
+        AiOn = _AiOn;
     }
 
 
@@ -46,36 +47,26 @@ public class GameLogic {
         return turn;
     }
 
-    public void MovePeice(int from, int to) {
+    public void ToggleAi() {
+        AiOn = AiOn ? false : true;
+    }
+
+    public void MovePeiceCheck(int from, int to) {
         //set Enpassant when pawn moved 2 squares
         if (char.ToLower(board[from]) == 'p' && Mathf.Abs(from - to) == 16) {
             int i = from - to == 16 ? -8 : 8;
-            gameDisplay.MovePiece(gameDisplay.tiles[from], gameDisplay.tiles[to]);
+            gameDisplay.MovePieceObject(from, to);
             board[to] = board[from];
             board[from] = '\0';
             EndTurn(from + i, char.IsUpper(board[from]));
             return;
         }
         //Castling
-        if (char.ToLower(board[from]) == 'k') {
-            if (Mathf.Abs(from - to) == 2) {
-                if (to == 62) {
-                    MovePeice(63, 61);
-                    gameDisplay.MoveObjectAI(63, 61);
-                }
-                if (to == 58) {
-                    MovePeice(56, 59);
-                    gameDisplay.MoveObjectAI(56, 59);
-                }
-                if (to == 6) {
-                    MovePeice(7, 5);
-                    gameDisplay.MoveObjectAI(7, 5);
-                }
-                if (to == 2) {
-                    MovePeice(0, 3);
-                    gameDisplay.MoveObjectAI(0, 3);
-                }
-            }
+        if (char.ToLower(board[from]) == 'k' && Math.Abs(from - to) == 2) {
+            if (to == 62) ActualMove(63, 61);
+            if (to == 58) ActualMove(56, 59);
+            if (to == 6) ActualMove(7, 5);
+            if (to == 2) ActualMove(0, 3);
         }
         //set castling flase when king moves
         if (char.ToLower(board[from]) == 'k') {
@@ -104,10 +95,48 @@ public class GameLogic {
                 gameDisplay.tiles[to - 8].piece.Die();
             }
         }
-        gameDisplay.MovePiece(gameDisplay.tiles[from], gameDisplay.tiles[to]);
+        Log(from, to);
+        ActualMove(from, to);
+        EndTurn();
+    }
+
+    void ActualMove(int from, int to) {
+        gameDisplay.MovePieceObject(from, to);
         board[to] = board[from];
         board[from] = '\0';
-        EndTurn();
+    }
+
+    string ToSquare(int sq) {
+        int rank = (sq / 8)+1;
+        int t = sq % 8;
+        char file = (char)(t + 65);
+        string s = file +""+ rank;
+        return s;
+    }
+
+    void Log(int from, int to) {
+        string notation = "";
+        if (char.ToLower(board[from]) != 'p') {
+            notation += board[from];
+        } else {
+            if (char.IsLetter(board[to])) {
+                notation += ToSquare(from)[0];
+            }
+        }
+        if(char.IsLetter(board[to])) {
+            notation += "x";
+        }
+        notation += ToSquare(to);
+
+        if (char.ToLower(board[from]) == 'k' && Math.Abs(from - to) == 2) {
+            if(to == 62 || to == 6) {
+                notation = "0-0";
+            } else {
+                notation = "0-0-0";
+            }
+            
+        }
+        Debug.Log(notation);
     }
 
     public void EndTurn(int Enp, bool up) {
@@ -123,7 +152,7 @@ public class GameLogic {
         En = true;
         Enpassant = Enp;
 
-        if (turn == 0) turn = (Colour)1; else turn = (Colour)0;
+        turn = turn == Colour.White ? Colour.Black : Colour.White;
         onTurnEnd?.Invoke();
         StartTurn();
     }
@@ -133,7 +162,7 @@ public class GameLogic {
             En = false;
             if (char.ToLower(board[Enpassant]) == 'e') board[Enpassant] = '\0';
         }
-        if (turn == 0) turn = (Colour)1; else turn = (Colour)0;
+        turn = turn == Colour.White ? Colour.Black : Colour.White;
         onTurnEnd?.Invoke();
         StartTurn();
     }
@@ -145,9 +174,9 @@ public class GameLogic {
         Colour enemy = sideColour == Colour.White ? Colour.Black : Colour.White;
         Dictionary<int, List<int>> temp = PieceLogic.instance.GetAllMoves(enemy, b);
         foreach (KeyValuePair<int, List<int>> x in temp) {
-                foreach (int m in x.Value) {
-                    if (m == kingPos) return true;
-                }
+            foreach (int m in x.Value) {
+                if (m == kingPos) return true;
+            }
         }
         return false;
     }
@@ -155,45 +184,95 @@ public class GameLogic {
     //return true if sideColour is in checkmate
     bool CheckCheckmate(Colour colour, char[] b) {
         Dictionary<int, List<int>> attemptedMoves = GetAllPossible(colour, b);
-        foreach (KeyValuePair<int, List<int>> piece in attemptedMoves) {
-            foreach (int move in piece.Value) {
-                char[] boardClone = (char[])b.Clone();
-                boardClone[move] = boardClone[piece.Key];
-                boardClone[piece.Key] = '\0';
-                //if in any of those moves check was escaped, not checkmate
-                if (CheckCheck(colour, boardClone) == false) {
-                    return false;
-                }
+
+        if (attemptedMoves == null || attemptedMoves.Keys.Count == 0) {
+            if (attemptedMoves == null) {
+                MonoBehaviour.print("moves null");
+            } else {
+                MonoBehaviour.print(attemptedMoves.Keys.Count);
             }
+            return true;
+        } else {
+            return false;
         }
-        return true;
+
+
     }
+
+    public void ExportFen() {
+        string FEN = "";
+        int rank = 0;
+        int emptyCount = 0;
+        //board
+        foreach (char square in board) {
+            if (rank == 8) {
+                if (emptyCount != 0) {
+                    FEN += emptyCount.ToString();
+                    emptyCount = 0;
+                }
+                FEN += "/";
+                rank = 0;
+            }
+            if (char.IsLetter(square)) {
+                if (emptyCount != 0) {
+                    FEN += emptyCount.ToString();
+                }
+                emptyCount = 0;
+                FEN += square;
+            } else {
+                emptyCount++;
+            }
+            rank++;
+        }
+        //turn
+        FEN += turn == Colour.White ? " w " : " b ";
+        //castling
+        string castling = "";
+        castling += Castling[0] ? "K" : "";
+        castling += Castling[1] ? "Q" : "";
+        castling += Castling[2] ? "k" : "";
+        castling += Castling[3] ? "q" : "";
+        if (castling == "") {
+            FEN += "- ";
+        } else {
+            FEN += castling + " ";
+        }
+        //Enpassant
+        if (En) {
+            FEN += Enpassant + " ";
+        } else {
+            FEN += "- ";
+        }
+        //moves
+        FEN += "0 ";
+        FEN += "0 ";
+        MonoBehaviour.print(FEN);
+    }
+
 
     //get all moves that dont place you in check if made
     public Dictionary<int, List<int>> GetAllPossible(Colour colour, char[] b) {
-        Dictionary<int, List<int>> moves = new Dictionary<int, List<int>>();
-        Dictionary<int, List<int>> temp = PieceLogic.instance.GetAllMoves(turn, b);
-
-        foreach (KeyValuePair<int, List<int>> piece in temp) {
+        Dictionary<int, List<int>> allowedmoves = new Dictionary<int, List<int>>();
+        Dictionary<int, List<int>> allMoves = PieceLogic.instance.GetAllMoves(colour, b);
+        foreach (KeyValuePair<int, List<int>> piece in allMoves) {
             foreach (int move in piece.Value) {
                 char[] boardClone = (char[])b.Clone();
                 boardClone[move] = boardClone[piece.Key];
                 boardClone[piece.Key] = '\0';
                 //if they dont put you in check, add
-                Colour enemy = colour == Colour.White ? Colour.Black : Colour.White;
                 if (!CheckCheck(colour, boardClone)) {
-                    if (moves.ContainsKey(piece.Key)) {
-                        moves[piece.Key].Add(move);
+                    if (allowedmoves.ContainsKey(piece.Key)) {
+                        allowedmoves[piece.Key].Add(move);
                     } else {
-                        moves.Add(piece.Key, new List<int>() { move });
+                        allowedmoves.Add(piece.Key, new List<int>() { move });
                     }
                 }
             }
         }
-        return moves;
+        return allowedmoves;
     }
 
-        public void StartTurn() {
+    public void StartTurn() {
         possableMoves = null;
         //check if in check, if true, check checkmate
         check = false;
@@ -209,8 +288,12 @@ public class GameLogic {
             check = false;
             onCheck?.Invoke();
         }
+
+
         possableMoves = GetAllPossible(turn, board);
-        if (turn != playerColour) artificialPlayer.TakeTurn();
+        if (turn != playerColour && AiOn == true) {
+            artificialPlayer.TakeTurn();
+        }
     }
 
     public bool MyTurn() {

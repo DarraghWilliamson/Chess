@@ -34,7 +34,7 @@ public class Tile : MonoBehaviour {
     public void OnMouseDown() {
         if (showingBlocked) return;
         if (showingTakeable || showingMoveable) {
-            gameLogic.MovePeice(gameDisplay.SelectedPeice.tile.num, num);
+            gameLogic.MovePeiceCheck(gameDisplay.SelectedPeice.tile.num, num);
             return;
         }
         if (piece == null) {

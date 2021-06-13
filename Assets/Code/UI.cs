@@ -25,6 +25,14 @@ public class UI : MonoBehaviour {
         check.text = "";
     }
 
+    public void FEN() {
+        GameLogic.instance.ExportFen();
+    }
+
+    public void ToggleAi() {
+        GameLogic.instance.ToggleAi();
+    }
+
     public void TurnChange() {
         gamelogic.EndTurn();
         UpdateUI();

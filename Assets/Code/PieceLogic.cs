@@ -36,10 +36,18 @@ public class PieceLogic {
         Dictionary<int, List<int>> moves = new Dictionary<int, List<int>>();
         Dictionary<int, List<int>> temp;
         int i = 0;
+        bool wh = colour == Colour.White;
         foreach (char c in board) {
-            if (char.IsUpper(c) == (colour == Colour.White)) {
+            if (!char.IsLetter(c)) {
+                i++;
+                continue;
+            }
+            if (char.IsUpper(c) == (wh)) {
                 temp = GetMoves(i, colour, board);
-                if (temp == null) continue;
+                if (temp == null) {
+                    i++;
+                    continue;
+                }
                 foreach (KeyValuePair<int, List<int>> x in temp) {
                     if (x.Value.Count > 0) {
                         moves.Add(x.Key, x.Value);
@@ -84,7 +92,7 @@ public class PieceLogic {
     public Dictionary<int, List<int>> GetPawnMoves(Colour colour, int i, char[] board) {
         int[] distances = GetDistance(i);
         List<int> m = new List<int>();
-        if (colour == Colour.Black) {
+        if (colour == Colour.White) {
             if (distances[1] > 0) {
                 if (!char.IsLetter(board[i + 8])) {
                     m.Add(i + 8);
@@ -252,16 +260,27 @@ public class PieceLogic {
         bool[] c = gameLogic.Castling;
         if(colour == Colour.White) {
             if (c[0]) {
-                if(!char.IsLetter(board[61]) && !char.IsLetter(board[62])) {
-                    m.Add(62);
+                if(!char.IsLetter(board[5]) && !char.IsLetter(board[6])) {
+                    m.Add(6);
                 }
             }
             if (c[1]) {
+                if (!char.IsLetter(board[3]) && !char.IsLetter(board[2]) && !char.IsLetter(board[1])) {
+                    m.Add(2);
+                }
+            } 
+        } else {
+            if (c[2]) {
+                if (!char.IsLetter(board[61]) && !char.IsLetter(board[62])) {
+                    m.Add(62);
+                }
+            }
+            if (c[3]) {
                 if (!char.IsLetter(board[59]) && !char.IsLetter(board[58]) && !char.IsLetter(board[57])) {
                     m.Add(58);
                 }
             }
-        } 
+        }
 
 
         Dictionary<int, List<int>> moves = new Dictionary<int, List<int>>() { { t, m } };

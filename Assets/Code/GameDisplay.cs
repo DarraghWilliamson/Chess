@@ -31,23 +31,13 @@ public class GameDisplay : MonoBehaviour {
         }
     }
 
-    public void MoveObjectAI(int t, int nt) {
-        Tile tile = tiles[t];
-        Tile newTile = tiles[nt];
-
-        PieceObject p = tile.piece;
-        if (newTile.piece != null) newTile.piece.Die();
-        tile.piece = null;
-        newTile.PlacePiece(p);
-        p.transform.position = newTile.transform.position;
-    }
-
-    public void MovePiece(Tile tile, Tile newTile) {
-        PieceObject p = tile.piece;
-        if (newTile.piece != null) newTile.piece.Die();
-        tile.piece = null;
-        newTile.PlacePiece(p);
-        p.transform.position = newTile.transform.position;
+    public void MovePieceObject(int from, int to) {
+        PieceObject p = tiles[from].piece;
+        
+        if (tiles[to].piece != null) tiles[to].piece.Die();
+        tiles[from].piece = null;
+        tiles[to].PlacePiece(p);
+        p.transform.position = tiles[to].transform.position;
         Unselect();
     }
 

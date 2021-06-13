@@ -18,7 +18,12 @@ public class ArtificialPlayer {
     }
 
     public void TakeTurn() {
-        Dictionary<int, List<int>> moves = gameLogic.possableMoves;
+        //Dictionary<int, List<int>> moves = gameLogic.possableMoves;
+        Dictionary<int, List<int>> moves = gameLogic.GetAllPossible(AiColour, gameLogic.board);
+        if (moves.Keys.Count==0) {
+            Debug.Log("gameover");
+            return;
+        }
         MoveRandom(moves);
     }
     
@@ -27,7 +32,7 @@ public class ArtificialPlayer {
         int from = keys[rand.Next(keys.Count)];
         List<int> options = moves[from];
         int to = options[rand.Next(options.Count)];
-        gameLogic.MovePeice(from, to);
+        gameLogic.MovePeiceCheck(from, to);
     }
 
     

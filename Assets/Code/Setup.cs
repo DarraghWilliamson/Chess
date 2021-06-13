@@ -8,6 +8,7 @@ public class Setup : MonoBehaviour {
     public Tile[] tiles = new Tile[64];
     public char[] origin;
     readonly string startFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    readonly string startFENj = "rnbqkb2/1ppppprp/p5pn/8/2B2P2/4PQ1N/PPPP2PP/RNB1K2R w KQkq - 0 0";
     public GameLogic gameLogic = new GameLogic();
     ArtificialPlayer artificialPlayer;
 
@@ -34,16 +35,23 @@ public class Setup : MonoBehaviour {
         bool en;
 
         string[] orig = FEN.Split(new char[] { ' ' });
-        int sq = 0;
+
+        int rank = 7;
+        int file = 0;
         foreach (char ch in orig[0]) {
             if (char.IsDigit(ch)) {
-                sq += (int)char.GetNumericValue(ch);
+                file += (int)char.GetNumericValue(ch);
             } else {
-                if (ch == '/') continue;
-                origin[sq] = ch;
-                sq++;
+                if (ch == '/') {
+                    rank--;
+                    file = 0;
+                    continue;
+                }
+                origin[(rank * 8) + file] = ch;
+                file++;
             }
         }
+
         turn = orig[1][0] == 'w' ? Colour.White : Colour.Black;
         foreach (char ch in orig[2]) {
             if (ch == '-') continue;
@@ -63,7 +71,8 @@ public class Setup : MonoBehaviour {
         half = Int32.Parse(orig[4]);
         full = Int32.Parse(orig[5]);
 
-        gameLogic.Setup(origin, turn, playerColour, Castling, Enpassant, en, half, full, artificialPlayer);
+        gameLogic.Setup(origin, turn, playerColour, Castling, Enpassant, en, half, full, artificialPlayer, true);
+
     }
 
     public static Tile[] SetUpTiles() {
@@ -72,19 +81,19 @@ public class Setup : MonoBehaviour {
         GameObject tile_ = Resources.Load<GameObject>("Peices/Tile");
         GameObject Tiles = new GameObject("Tiles");
         int t = 0;
-        Vector3 pos = new Vector3(70, 0, 70);
+        Vector3 pos = new Vector3(-70, 0, 70);
         for (int i = 0; i < 8; i++) {
             for (int i2 = 0; i2 < 8; i2++) {
                 GameObject tile = Instantiate(tile_, Tiles.transform);
                 tile.transform.position = pos;
                 pos.z -= 20;
-                tile.name = abc[i] + (i2 + 1);
+                tile.name = abc[i2] + (i+1);
                 tiles[t] = tile.GetComponent<Tile>();
                 tiles[t].num = t;
                 t++;
             }
             pos.z = 70;
-            pos.x -= 20;
+            pos.x += 20;
         }
         return tiles;
     }
@@ -101,18 +110,19 @@ public class Setup : MonoBehaviour {
         GameObject White = new GameObject("White");
         GameObject Black = new GameObject("Black");
 
-        for (int i = 0; i < origin.Length; i++) {
-            if (origin[i] != '\0') {
+        for (int i = 0; i < 64; i++) {
+            if (origin[i] != '\0' && origin[i] != 'e') {
                 string colour;
-                GameObject g;
+                GameObject parent;
                 if (char.IsUpper(origin[i])) {
                     colour = "White";
-                    g = White;
+                    parent = White;
                 } else {
                     colour = "black";
-                    g = Black;
+                    parent = Black;
                 }
-                GameObject piece = Instantiate(Resources.Load<GameObject>("Peices/" + dict[char.ToLower(origin[i])] + colour), g.transform);
+
+                GameObject piece = Instantiate(Resources.Load<GameObject>("Peices/" + dict[char.ToLower(origin[i])] + colour), parent.transform);
 
                 Tile tile = tiles[i];
                 tile.piece = piece.GetComponent<PieceObject>();

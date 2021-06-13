@@ -16,6 +16,8 @@ public abstract class PieceObject : MonoBehaviour {
     PieceLogic peiceLogic;
     public char[] board;
 
+    public List<int> pos, allow;
+
     private void Start() {
         peiceLogic = PieceLogic.instance;
         gameDisplay = GameDisplay.instance;
@@ -24,9 +26,17 @@ public abstract class PieceObject : MonoBehaviour {
     }
 
     private void OnMouseDown() {
-        if (!gameLogic.MyTurn()) return;
+
+        PieceLogic.instance.GetMoves(tile.num, colour);
+        List<int> a = new List<int>();
+        foreach (KeyValuePair<int, List<int>> piece in PieceLogic.instance.GetMoves(tile.num, colour)) {
+            a = piece.Value;
+        }
+        pos = a;
+
+            if (!gameLogic.MyTurn()) return;
         if ((gameLogic.playerColour != colour) && inDanger) {
-            gameLogic.MovePeice(gameDisplay.SelectedPeice.tile.num, tile.num);
+            gameLogic.MovePeiceCheck(gameDisplay.SelectedPeice.tile.num, tile.num);
             return;
         }
         if (!selected && (gameLogic.playerColour == colour)) {
