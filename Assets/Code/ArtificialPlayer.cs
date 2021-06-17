@@ -4,13 +4,13 @@ using UnityEngine;
 using System;
 
 public class ArtificialPlayer {
-    Colour AiColour;
+    int AiColour;
     PieceLogic pieceLogic;
     GameLogic gameLogic;
     GameDisplay gameDisplay;
     System.Random rand = new System.Random();
 
-    public ArtificialPlayer(Colour colour) {
+    public ArtificialPlayer(int colour) {
         AiColour = colour;
         pieceLogic = PieceLogic.instance;
         gameLogic = GameLogic.instance;
@@ -19,20 +19,17 @@ public class ArtificialPlayer {
 
     public void TakeTurn() {
         //Dictionary<int, List<int>> moves = gameLogic.possableMoves;
-        Dictionary<int, List<int>> moves = gameLogic.GetAllPossible(AiColour, gameLogic.board);
-        if (moves.Keys.Count==0) {
-            Debug.Log("gameover");
+        List<Move> moves = gameLogic.board.GetLegalMoves(AiColour, gameLogic.board.board);
+        if (moves.Count==0) {
+            Debug.Log("AI has no moves");
             return;
         }
         MoveRandom(moves);
     }
     
-    public void MoveRandom(Dictionary<int, List<int>> moves) {
-        List<int> keys = new List<int>(moves.Keys);
-        int from = keys[rand.Next(keys.Count)];
-        List<int> options = moves[from];
-        int to = options[rand.Next(options.Count)];
-        gameLogic.MovePeiceCheck(from, to);
+    public void MoveRandom(List<Move> moves) {
+        int a = rand.Next(moves.Count);
+        gameLogic.board.MovePeiceCheck(moves[a]);
     }
 
     

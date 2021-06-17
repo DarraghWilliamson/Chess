@@ -4,39 +4,42 @@ using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 
-public abstract class PieceObject : MonoBehaviour {
+public class PieceObject : MonoBehaviour {
 
     public bool inDanger, selected;
-    public Colour colour = Colour.White;
+    public int colour = 0;
     public Tile tile;
     public Material standard, greenOutline, redOutline;
     public Tile[] tiles;
     GameDisplay gameDisplay;
     GameLogic gameLogic;
-    PieceLogic peiceLogic;
-    public char[] board;
+    PieceLogic pieceLogic;
+    Board board;
+    public char[] charBoard;
+    
 
     public List<int> pos, allow;
 
     private void Start() {
-        peiceLogic = PieceLogic.instance;
+        pieceLogic = PieceLogic.instance;
         gameDisplay = GameDisplay.instance;
         gameLogic = GameLogic.instance;
         board = gameLogic.board;
+        charBoard = board.board;
     }
 
     private void OnMouseDown() {
-
-        PieceLogic.instance.GetMoves(tile.num, colour);
+        
         List<int> a = new List<int>();
-        foreach (KeyValuePair<int, List<int>> piece in PieceLogic.instance.GetMoves(tile.num, colour)) {
-            a = piece.Value;
+        foreach (Move move in pieceLogic.GetMoves(tile.num)) {
+            a.Add(move.EndSquare);
+            
         }
         pos = a;
 
             if (!gameLogic.MyTurn()) return;
         if ((gameLogic.playerColour != colour) && inDanger) {
-            gameLogic.MovePeiceCheck(gameDisplay.SelectedPeice.tile.num, tile.num);
+            board.MovePeiceCheck(new Move(gameDisplay.SelectedPeice.tile.num, tile.num));
             return;
         }
         if (!selected && (gameLogic.playerColour == colour)) {
@@ -68,11 +71,11 @@ public abstract class PieceObject : MonoBehaviour {
     }
 
     string CheckTile(int i) {
-        char t = GameLogic.instance.board[i];
+        char t = board.board[i];
         if (!char.IsLetter(t)) {
             return "move";
         } else {
-            if (char.IsUpper(board[i]) != (colour == Colour.Black)) {
+            if (char.IsUpper(board.board[i]) != (colour == 1)) {
                 return "block";
             } else {
                 return "take";
@@ -81,12 +84,13 @@ public abstract class PieceObject : MonoBehaviour {
     }
 
     void ShowMoves() {
-        Dictionary<int, List<int>> moves = gameLogic.possableMoves;
-        if (moves.ContainsKey(tile.num)) {
-            foreach (int i in moves[tile.num]) {
-                if (CheckTile(i) == "move") tiles[i].ShowMoveable(false);
-                if (CheckTile(i) == "take") tiles[i].ShowTakeable();
-                if (CheckTile(i) == "block") tiles[i].ShowBlocked();
+        List<Move> moves = gameLogic.possableMoves;
+        foreach(Move move in moves) {
+            if (move.StartSquare == tile.num) {
+                int end = move.EndSquare;
+                if (CheckTile(end) == "move") tiles[end].ShowMoveable(false);
+                if (CheckTile(end) == "take") tiles[end].ShowTakeable();
+                if (CheckTile(end) == "block") tiles[end].ShowBlocked();
             }
         }
     }
@@ -115,7 +119,7 @@ public abstract class PieceObject : MonoBehaviour {
     public void Die() {
         tile.piece = null;
         GetComponent<MeshCollider>().enabled = false;
-        if (colour == Colour.White) {
+        if (colour == 0) {
             transform.position = gameDisplay.deathWhite[gameDisplay.deadWhite];
             gameDisplay.deadWhite++;
         } else {

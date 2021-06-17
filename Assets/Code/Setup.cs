@@ -4,18 +4,19 @@ using System.Collections.Generic;
 
 public class Setup : MonoBehaviour {
 
-    Colour playerColour;
+    int playerColour;
     public Tile[] tiles = new Tile[64];
     public char[] origin;
     readonly string startFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     readonly string startFENj = "rnbqkb2/1ppppprp/p5pn/8/2B2P2/4PQ1N/PPPP2PP/RNB1K2R w KQkq - 0 0";
+    readonly string startFENa = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
     public GameLogic gameLogic = new GameLogic();
     ArtificialPlayer artificialPlayer;
 
     void Start() {
-        playerColour = Colour.White;
+        playerColour = 0;
         origin = new char[64];
-        artificialPlayer = new ArtificialPlayer(Colour.Black);
+        artificialPlayer = new ArtificialPlayer(1);
         LoadFEN(startFEN);
         tiles = SetUpTiles();
         new PieceLogic();
@@ -70,8 +71,13 @@ public class Setup : MonoBehaviour {
         }
         half = Int32.Parse(orig[4]);
         full = Int32.Parse(orig[5]);
-
-        gameLogic.Setup(origin, turn, playerColour, Castling, Enpassant, en, half, full, artificialPlayer, true);
+        Board b = new Board();
+        b.board = origin;
+        b.Castling = Castling;
+        b.gameLogic = gameLogic;
+        b.Enpassant = Enpassant;
+        b.En = en;
+        gameLogic.Setup(b, turn, playerColour, half, full, artificialPlayer, true);
 
     }
 
@@ -109,9 +115,11 @@ public class Setup : MonoBehaviour {
         };
         GameObject White = new GameObject("White");
         GameObject Black = new GameObject("Black");
+        List<int> tempList = new List<int>();
 
         for (int i = 0; i < 64; i++) {
             if (origin[i] != '\0' && origin[i] != 'e') {
+                tempList.Add(i);
                 string colour;
                 GameObject parent;
                 if (char.IsUpper(origin[i])) {
@@ -121,7 +129,6 @@ public class Setup : MonoBehaviour {
                     colour = "black";
                     parent = Black;
                 }
-
                 GameObject piece = Instantiate(Resources.Load<GameObject>("Peices/" + dict[char.ToLower(origin[i])] + colour), parent.transform);
 
                 Tile tile = tiles[i];
@@ -137,7 +144,11 @@ public class Setup : MonoBehaviour {
         temp.GetComponent<MeshCollider>().enabled = false;
         temp.SetActive(false);
         GameDisplay.instance.Enp = temp;
-
+        Piece[] pieces = new Piece[tempList.Count];
+        for (int i = 0; i < tempList.Count; i++) {
+            pieces[i] = new Piece(tempList[i], null);
+        }
+        gameLogic.pieces = pieces;
 
     }
 

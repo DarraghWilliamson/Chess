@@ -15,8 +15,8 @@ public class UI : MonoBehaviour {
     }
 
     public void UpdateUI() {
-        if (gamelogic.turn == Colour.White) team.text = "White's move"; else team.text = "Blacks's move";
-        if (gamelogic.turn == gamelogic.playerColour) turn.text = "Your move"; else turn.text = "Enemy move";
+        if (gamelogic.board.turnColour == 0) team.text = "White's move"; else team.text = "Blacks's move";
+        if (gamelogic.board.turnColour == gamelogic.playerColour) turn.text = "Your move"; else turn.text = "Enemy move";
     }
 
     public void UpdateCheck() {

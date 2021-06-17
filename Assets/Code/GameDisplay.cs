@@ -1,7 +1,6 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
-
 public class GameDisplay : MonoBehaviour {
 
     public static GameDisplay instance;
@@ -33,7 +32,7 @@ public class GameDisplay : MonoBehaviour {
 
     public void MovePieceObject(int from, int to) {
         PieceObject p = tiles[from].piece;
-        
+
         if (tiles[to].piece != null) tiles[to].piece.Die();
         tiles[from].piece = null;
         tiles[to].PlacePiece(p);

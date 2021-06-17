@@ -2,22 +2,19 @@
 using System.Collections.Generic;
 using UnityEngine;
 using System;
-
 public class GameLogic {
 
     public static GameLogic instance;
-    public Colour turn = Colour.White;
-    public Colour playerColour = Colour.White;
-    public char[] board;
-    public bool[] Castling;
-    public int Enpassant, halfMove, fullMove;
-    public bool En, check, checkmate, AiOn;
-    public Dictionary<int, List<int>> possableMoves;
+    public int playerColour = 0;
+
+    public int halfMove, fullMove;
+    public bool check, checkmate, AiOn;
+    public List<Move> possableMoves;
     ArtificialPlayer artificialPlayer;
-
-
     GameDisplay gameDisplay;
-
+    bool show = true;
+    public Piece[] pieces;
+    public Board board;
 
     public delegate void OnTurnEnd();
     public OnTurnEnd onTurnEnd;
@@ -27,184 +24,64 @@ public class GameLogic {
 
     public GameLogic() { instance = this; }
 
-    public void Setup(char[] _board, Colour _turn, Colour _playerColour, bool[] _castling, int _Enpassant, bool _en, int _halfMove, int _fullMove, ArtificialPlayer _artificialPlayer, bool _AiOn) {
+    public void Setup(Board _board, Colour _turn, int _playerColour, int _halfMove, int _fullMove, ArtificialPlayer _artificialPlayer, bool _AiOn) {
         board = _board;
-        turn = _turn;
         playerColour = _playerColour;
-        Castling = _castling;
-        Enpassant = _Enpassant;
-        En = _en;
         halfMove = _halfMove;
         fullMove = _halfMove;
         artificialPlayer = _artificialPlayer;
         gameDisplay = GameDisplay.instance;
         AiOn = _AiOn;
+
     }
-
-
-
-    public Colour GetTurn() {
-        return turn;
-    }
-
-    public void ToggleAi() {
-        AiOn = AiOn ? false : true;
-    }
-
-    public void MovePeiceCheck(int from, int to) {
-        //set Enpassant when pawn moved 2 squares
-        if (char.ToLower(board[from]) == 'p' && Mathf.Abs(from - to) == 16) {
-            int i = from - to == 16 ? -8 : 8;
-            gameDisplay.MovePieceObject(from, to);
-            board[to] = board[from];
-            board[from] = '\0';
-            EndTurn(from + i, char.IsUpper(board[from]));
-            return;
-        }
-        //Castling
-        if (char.ToLower(board[from]) == 'k' && Math.Abs(from - to) == 2) {
-            if (to == 62) ActualMove(63, 61);
-            if (to == 58) ActualMove(56, 59);
-            if (to == 6) ActualMove(7, 5);
-            if (to == 2) ActualMove(0, 3);
-        }
-        //set castling flase when king moves
-        if (char.ToLower(board[from]) == 'k') {
-            if (char.IsUpper(board[from])) {
-                Castling[0] = false;
-                Castling[1] = false;
+    
+    public void StartTurn() {
+        possableMoves = null;
+        //check if in check, if true, check checkmate
+        check = false;
+        if (board.CheckCheck(board.turnColour, board.board)) {
+            if (board.CheckCheckmate(board.turnColour, board.board)) {
+                checkmate = true;
+                onCheck?.Invoke();
             } else {
-                Castling[2] = false;
-                Castling[3] = false;
+                check = true;
+                onCheck?.Invoke();
             }
-        }
-        //set castling to false when rook moves
-        if (char.ToLower(board[from]) == 'r') {
-            if (from == 63) Castling[0] = false;
-            if (from == 56) Castling[1] = false;
-            if (from == 7) Castling[2] = false;
-            if (from == 0) Castling[3] = false;
-        }
-        //kill pawn when Enpassant tile is taken
-        if (char.ToLower(board[to]) == 'e') {
-            if (to >= 16 && to <= 23) {
-                board[to + 8] = '\0';
-                gameDisplay.tiles[to + 8].piece.Die();
-            } else {
-                board[to - 8] = '\0';
-                gameDisplay.tiles[to - 8].piece.Die();
-            }
-        }
-        Log(from, to);
-        ActualMove(from, to);
-        EndTurn();
-    }
-
-    void ActualMove(int from, int to) {
-        gameDisplay.MovePieceObject(from, to);
-        board[to] = board[from];
-        board[from] = '\0';
-    }
-
-    string ToSquare(int sq) {
-        int rank = (sq / 8)+1;
-        int t = sq % 8;
-        char file = (char)(t + 65);
-        string s = file +""+ rank;
-        return s;
-    }
-
-    void Log(int from, int to) {
-        string notation = "";
-        if (char.ToLower(board[from]) != 'p') {
-            notation += board[from];
         } else {
-            if (char.IsLetter(board[to])) {
-                notation += ToSquare(from)[0];
-            }
-        }
-        if(char.IsLetter(board[to])) {
-            notation += "x";
-        }
-        notation += ToSquare(to);
-
-        if (char.ToLower(board[from]) == 'k' && Math.Abs(from - to) == 2) {
-            if(to == 62 || to == 6) {
-                notation = "0-0";
-            } else {
-                notation = "0-0-0";
-            }
-            
-        }
-        Debug.Log(notation);
-    }
-
-    public void EndTurn(int Enp, bool up) {
-        if (En) {
-            if (char.ToLower(board[Enpassant]) == 'e') board[Enpassant] = '\0';
-        }
-        if (up) {
-            board[Enp] = 'E';
-        } else {
-            board[Enp] = 'e';
+            check = false;
+            onCheck?.Invoke();
         }
 
-        En = true;
-        Enpassant = Enp;
 
-        turn = turn == Colour.White ? Colour.Black : Colour.White;
-        onTurnEnd?.Invoke();
-        StartTurn();
+        possableMoves = board.GetLegalMoves(board.turnColour, board.board);
+        for (int i = 0; i < pieces.Length; i++) {
+            pieces[i].moves = board.GetLegalMove(pieces[i].location);
+        }
+
+        if (board.turnColour != playerColour && AiOn == true) {
+            artificialPlayer.TakeTurn();
+        }
     }
 
     public void EndTurn() {
-        if (En) {
-            En = false;
-            if (char.ToLower(board[Enpassant]) == 'e') board[Enpassant] = '\0';
-        }
-        turn = turn == Colour.White ? Colour.Black : Colour.White;
+        //if(show) gameDisplay.MovePieceObject(from, to);
+        board.ChangeTurn();
         onTurnEnd?.Invoke();
         StartTurn();
     }
-
-    //return true if sideColour is in check
-    bool CheckCheck(Colour sideColour, char[] b) {
-        char king = sideColour == Colour.White ? 'K' : 'k';
-        int kingPos = Array.IndexOf(b, king);
-        Colour enemy = sideColour == Colour.White ? Colour.Black : Colour.White;
-        Dictionary<int, List<int>> temp = PieceLogic.instance.GetAllMoves(enemy, b);
-        foreach (KeyValuePair<int, List<int>> x in temp) {
-            foreach (int m in x.Value) {
-                if (m == kingPos) return true;
-            }
-        }
-        return false;
-    }
-
-    //return true if sideColour is in checkmate
-    bool CheckCheckmate(Colour colour, char[] b) {
-        Dictionary<int, List<int>> attemptedMoves = GetAllPossible(colour, b);
-
-        if (attemptedMoves == null || attemptedMoves.Keys.Count == 0) {
-            if (attemptedMoves == null) {
-                MonoBehaviour.print("moves null");
-            } else {
-                MonoBehaviour.print(attemptedMoves.Keys.Count);
-            }
-            return true;
-        } else {
-            return false;
-        }
-
-
-    }
-
+    
+    //converts current board to FEN format and prints
     public void ExportFen() {
+        board.MoveTest(1);
+        board.MoveTest(2);
+        board.MoveTest(3);
+        //MoveTest(4);
+
         string FEN = "";
         int rank = 0;
         int emptyCount = 0;
         //board
-        foreach (char square in board) {
+        foreach (char square in board.board) {
             if (rank == 8) {
                 if (emptyCount != 0) {
                     FEN += emptyCount.ToString();
@@ -225,13 +102,13 @@ public class GameLogic {
             rank++;
         }
         //turn
-        FEN += turn == Colour.White ? " w " : " b ";
+        FEN += board.turnColour == 0 ? " w " : " b ";
         //castling
         string castling = "";
-        castling += Castling[0] ? "K" : "";
-        castling += Castling[1] ? "Q" : "";
-        castling += Castling[2] ? "k" : "";
-        castling += Castling[3] ? "q" : "";
+        castling += board.Castling[0] ? "K" : "";
+        castling += board.Castling[1] ? "Q" : "";
+        castling += board.Castling[2] ? "k" : "";
+        castling += board.Castling[3] ? "q" : "";
         if (castling == "") {
             FEN += "- ";
         } else {
@@ -249,63 +126,21 @@ public class GameLogic {
         MonoBehaviour.print(FEN);
     }
 
-
-    //get all moves that dont place you in check if made
-    public Dictionary<int, List<int>> GetAllPossible(Colour colour, char[] b) {
-        Dictionary<int, List<int>> allowedmoves = new Dictionary<int, List<int>>();
-        Dictionary<int, List<int>> allMoves = PieceLogic.instance.GetAllMoves(colour, b);
-        foreach (KeyValuePair<int, List<int>> piece in allMoves) {
-            foreach (int move in piece.Value) {
-                char[] boardClone = (char[])b.Clone();
-                boardClone[move] = boardClone[piece.Key];
-                boardClone[piece.Key] = '\0';
-                //if they dont put you in check, add
-                if (!CheckCheck(colour, boardClone)) {
-                    if (allowedmoves.ContainsKey(piece.Key)) {
-                        allowedmoves[piece.Key].Add(move);
-                    } else {
-                        allowedmoves.Add(piece.Key, new List<int>() { move });
-                    }
-                }
-            }
-        }
-        return allowedmoves;
-    }
-
-    public void StartTurn() {
-        possableMoves = null;
-        //check if in check, if true, check checkmate
-        check = false;
-        if (CheckCheck(turn, board)) {
-            if (CheckCheckmate(turn, board)) {
-                checkmate = true;
-                onCheck?.Invoke();
-            } else {
-                check = true;
-                onCheck?.Invoke();
-            }
-        } else {
-            check = false;
-            onCheck?.Invoke();
-        }
-
-
-        possableMoves = GetAllPossible(turn, board);
-        if (turn != playerColour && AiOn == true) {
-            artificialPlayer.TakeTurn();
-        }
+    public void ToggleAi() {
+        AiOn = AiOn ? false : true;
     }
 
     public bool MyTurn() {
-        return playerColour == turn;
+        return playerColour == board.turnColour;
     }
 
-    public Colour GetTeam() {
+    public int GetTeam() {
         return playerColour;
     }
 
     public void ChangeTeam() {
-        if (playerColour == 0) playerColour = (Colour)1; else playerColour = (Colour)0;
+
+        if (playerColour == 0) playerColour = 1; else playerColour = 0;
     }
 
 }

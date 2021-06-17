@@ -5,60 +5,36 @@ using System;
 
 public class PieceLogic {
     GameLogic gameLogic;
+    Board board;
     public static PieceLogic instance;
     char ori;
 
     public PieceLogic() {
         instance = this;
         gameLogic = GameLogic.instance;
+        board = gameLogic.board;
     }
 
-    public Dictionary<int, List<int>> GetMoves(int i, Colour colour) {
-        return GetMovesMethod(i, colour, gameLogic.board);
+    
+    
+    public List<Move> GetMoves(int i) {
+        Colour colour = char.IsUpper(board.board[i]) ? Colour.White : Colour.Black;
+        return GetMovesMethod(i, colour, board.board);
     }
-    public Dictionary<int, List<int>> GetMoves(int i, Colour colour, char[] b) {
+    public List<Move> GetMoves(int i, Colour colour, char[] b) {
         return GetMovesMethod(i, colour, b);
     }
-    
-    public Dictionary<int, List<int>> GetMovesMethod(int i, Colour colour, char[] board) {
-        Dictionary<int, List<int>> moves = null;
+
+    public List<Move> GetMovesMethod(int i, Colour colour, char[] board) {
         ori = board[i];
-        if (char.ToLower(ori) == 'p') moves = GetPawnMoves(colour, i, board);
-        if (char.ToLower(ori) == 'n') moves = GetKnightMoves(i, board);
-        if (char.ToLower(ori) == 'r') moves = GetRookMoves(i, board);
-        if (char.ToLower(ori) == 'b') moves = GetBishopMoves(i, board);
-        if (char.ToLower(ori) == 'q') moves = GetQueenMoves(i, board);
-        if (char.ToLower(ori) == 'k') moves = GetKingMoves(colour, i, board);
-        return moves;
+        if (char.ToLower(ori) == 'p') return GetPawnMoves(colour, i, board);
+        if (char.ToLower(ori) == 'n') return GetKnightMoves(i, board);
+        if (char.ToLower(ori) == 'r') return GetRookMoves(i, board);
+        if (char.ToLower(ori) == 'b') return GetBishopMoves(i, board);
+        if (char.ToLower(ori) == 'q') return GetQueenMoves(i, board);
+        if (char.ToLower(ori) == 'k') return GetKingMoves(colour, i, board);
+        return null;
     }
-
-    public Dictionary<int, List<int>> GetAllMoves(Colour colour, char[] board) {
-        Dictionary<int, List<int>> moves = new Dictionary<int, List<int>>();
-        Dictionary<int, List<int>> temp;
-        int i = 0;
-        bool wh = colour == Colour.White;
-        foreach (char c in board) {
-            if (!char.IsLetter(c)) {
-                i++;
-                continue;
-            }
-            if (char.IsUpper(c) == (wh)) {
-                temp = GetMoves(i, colour, board);
-                if (temp == null) {
-                    i++;
-                    continue;
-                }
-                foreach (KeyValuePair<int, List<int>> x in temp) {
-                    if (x.Value.Count > 0) {
-                        moves.Add(x.Key, x.Value);
-                    }
-                }
-            }
-            i++;
-        }
-        return moves;
-    }
-
     //returns a int[] with distances to edge in each direction - n,s,e,w,ne,nw,se,sw
     public int[] GetDistance(int loc) {
         int[] nsew = new int[8];
@@ -73,217 +49,210 @@ public class PieceLogic {
         nsew[7] = Math.Min(nsew[1], nsew[3]);
         return nsew;
     }
-
     //check if a tile contains a enemy for GetPawnMoves
     bool CheckEnemy(int i, char[] board) {
         char t = board[i];
         if (char.IsLetter(t) && char.IsUpper(t) != char.IsUpper(ori)) return true;
         return false;
     }
-
-    bool CheckNotFriendly(int i, char[] board) {
-        char t = board[i];
+    //returns true is there is not a friendly piece at pos
+    bool CheckNotFriendly(int pos, char[] board) {
+        char t = board[pos];
         if (!char.IsLetter(t) || (char.IsUpper(t) != char.IsUpper(ori))) return true;
         return false;
     }
 
-    
-
-    public Dictionary<int, List<int>> GetPawnMoves(Colour colour, int i, char[] board) {
-        int[] distances = GetDistance(i);
-        List<int> m = new List<int>();
+    public List<Move> GetPawnMoves(Colour colour, int sq, char[] board) {
+        int[] distances = GetDistance(sq);
+        List<Move> moves = new List<Move>();
         if (colour == Colour.White) {
             if (distances[1] > 0) {
-                if (!char.IsLetter(board[i + 8])) {
-                    m.Add(i + 8);
-                    if (distances[0] == 1 && !char.IsLetter(board[i + 16])) {
-                        m.Add(i + 16);
+                if (!char.IsLetter(board[sq + 8])) {
+                    moves.Add(new Move(sq, sq + 8));
+                    if (distances[0] == 1 && !char.IsLetter(board[sq + 16])) {
+                        moves.Add(new Move(sq, sq + 16, 3));
                     }
                 }
             }
             if (distances[6] > 0) {
-                if (CheckEnemy(i + 9, board)) m.Add(i + 9);
+                if (CheckEnemy(sq + 9, board)) moves.Add(new Move(sq, sq + 9));
             }
             if (distances[7] > 0) {
-                if (CheckEnemy(i + 7, board)) m.Add(i + 9);
+                if (CheckEnemy(sq + 7, board)) moves.Add(new Move(sq, sq + 7));
             }
         } else {
             if (distances[0] > 0) {
-                if (!char.IsLetter(board[i - 8])) {
-                    m.Add(i - 8);
-                    if (distances[1] == 1 && !char.IsLetter(board[i - 16])) {
-                        m.Add(i - 16);
+                if (!char.IsLetter(board[sq - 8])) {
+                    moves.Add(new Move(sq, sq - 8));
+                    if (distances[1] == 1 && !char.IsLetter(board[sq - 16])) {
+                        moves.Add(new Move(sq, sq - 16, 3));
                     }
                 }
             }
             if (distances[4] > 0) {
-                if (CheckEnemy(i - 7, board)) m.Add(i - 7);
+                if (CheckEnemy(sq - 7, board)) moves.Add(new Move(sq, sq - 7));
             }
             if (distances[5] > 0) {
-                if (CheckEnemy(i - 9, board)) m.Add(i - 9);
+                if (CheckEnemy(sq - 9, board)) moves.Add(new Move(sq, sq - 9));
             }
         }
-        Dictionary<int, List<int>> moves = new Dictionary<int, List<int>>() { { i, m } };
         return moves;
     }
-
-    public Dictionary<int, List<int>> GetKnightMoves(int i, char[] board) {
-        int[] distances = GetDistance(i);
+    
+    public List<Move> GetKnightMoves(int sq, char[] board) {
+        int[] distances = GetDistance(sq);
         List<int> m = new List<int>();
         if (distances[0] >= 2) {
-            if (distances[2] >= 1 && CheckNotFriendly(i - 15, board)) m.Add(i - 15);
-            if (distances[3] >= 1 && CheckNotFriendly(i - 17, board)) m.Add(i - 17);
+            if (distances[2] >= 1 && CheckNotFriendly(sq - 15, board)) m.Add(sq - 15);
+            if (distances[3] >= 1 && CheckNotFriendly(sq - 17, board)) m.Add(sq - 17);
         }
         if (distances[1] >= 2) {
-            if (distances[2] >= 1 && CheckNotFriendly(i + 17, board)) m.Add(i + 17);
-            if (distances[3] >= 1 && CheckNotFriendly(i + 15, board)) m.Add(i + 15);
+            if (distances[2] >= 1 && CheckNotFriendly(sq + 17, board)) m.Add(sq + 17);
+            if (distances[3] >= 1 && CheckNotFriendly(sq + 15, board)) m.Add(sq + 15);
         }
         if (distances[3] >= 2) {
-            if (distances[0] >= 1 && CheckNotFriendly(i - 10, board)) m.Add(i - 10);
-            if (distances[1] >= 1 && CheckNotFriendly(i + 6, board)) m.Add(i + 6);
+            if (distances[0] >= 1 && CheckNotFriendly(sq - 10, board)) m.Add(sq - 10);
+            if (distances[1] >= 1 && CheckNotFriendly(sq + 6, board)) m.Add(sq + 6);
         }
         if (distances[4] >= 2) {
-            if (distances[0] >= 1 && CheckNotFriendly(i - 6, board)) m.Add(i - 6);
-            if (distances[1] >= 1 && CheckNotFriendly(i + 10, board)) m.Add(i + 10);
+            if (distances[0] >= 1 && CheckNotFriendly(sq - 6, board)) m.Add(sq - 6);
+            if (distances[1] >= 1 && CheckNotFriendly(sq + 10, board)) m.Add(sq + 10);
         }
-        Dictionary<int, List<int>> moves = new Dictionary<int, List<int>>() { { i, m } };
+
+        List<Move> moves = new List<Move>();
+        foreach (int destination in m) {
+            moves.Add(new Move(sq, destination));
+        }
         return moves;
     }
 
-    public Dictionary<int, List<int>> GetRookMoves(int t, char[] board) {
-        int[] distances = GetDistance(t);
-        List<int> m = new List<int>();
+    public List<Move> GetRookMoves(int sq, char[] board) {
+        int[] distances = GetDistance(sq);
+        List<int> destinations = new List<int>();
         for (int i = 1; i < distances[0] + 1; i++) {
-            if (char.IsLetter(board[t - (8 * i)])) {
-                if (CheckNotFriendly(t - (8 * i), board)) m.Add(t - (8 * i));
+            if (char.IsLetter(board[sq - (8 * i)])) {
+                if (CheckNotFriendly(sq - (8 * i), board)) destinations.Add(sq - (8 * i));
                 break;
             } else {
-                m.Add(t - (8 * i));
+                destinations.Add(sq - (8 * i));
             }
         }
         for (int i = 1; i < distances[1] + 1; i++) {
-            if (char.IsLetter(board[t + (8 * i)])) {
-                if (CheckNotFriendly(t + (8 * i), board)) m.Add(t + (8 * i));
+            if (char.IsLetter(board[sq + (8 * i)])) {
+                if (CheckNotFriendly(sq + (8 * i), board)) destinations.Add(sq + (8 * i));
                 break;
             } else {
-                m.Add(t + (8 * i));
+                destinations.Add(sq + (8 * i));
             }
         }
         for (int i = 1; i < distances[2] + 1; i++) {
-            if (char.IsLetter(board[t + i])) {
-                if (CheckNotFriendly(t + i, board)) m.Add(t + i);
+            if (char.IsLetter(board[sq + i])) {
+                if (CheckNotFriendly(sq + i, board)) destinations.Add(sq + i);
                 break;
             } else {
-                m.Add(t + i);
+                destinations.Add(sq + i);
             }
         }
         for (int i = 1; i < distances[3] + 1; i++) {
-            if (char.IsLetter(board[t - i])) {
-                if (CheckNotFriendly(t - i, board)) m.Add(t - i);
+            if (char.IsLetter(board[sq - i])) {
+                if (CheckNotFriendly(sq - i, board)) destinations.Add(sq - i);
                 break;
             } else {
-                m.Add(t - i);
+                destinations.Add(sq - i);
             }
         }
-        Dictionary<int, List<int>> moves = new Dictionary<int, List<int>>() { { t, m } };
+        List<Move> moves = new List<Move>();
+        foreach (int destination in destinations) {
+            moves.Add(new Move(sq, destination));
+        }
         return moves;
     }
 
-    public Dictionary<int, List<int>> GetBishopMoves(int t, char[] board) {
-        int[] distances = GetDistance(t);
-        List<int> m = new List<int>();
+    public List<Move> GetBishopMoves(int sq, char[] board) {
+        int[] distances = GetDistance(sq);
+        List<int> destinations = new List<int>();
         for (int i = 1; i < distances[4] + 1; i++) {
-            if (char.IsLetter(board[t - (7 * i)])) {
-                if (CheckNotFriendly(t - (7 * i), board)) m.Add(t - (7 * i));
+            if (char.IsLetter(board[sq - (7 * i)])) {
+                if (CheckNotFriendly(sq - (7 * i), board)) destinations.Add(sq - (7 * i));
                 break;
             } else {
-                m.Add(t - (7 * i));
+                destinations.Add(sq - (7 * i));
             }
         }
         for (int i = 1; i < distances[5] + 1; i++) {
-            if (char.IsLetter(board[t - (9 * i)])) {
-                if (CheckNotFriendly(t - (9 * i), board)) m.Add(t - (9 * i));
+            if (char.IsLetter(board[sq - (9 * i)])) {
+                if (CheckNotFriendly(sq - (9 * i), board)) destinations.Add(sq - (9 * i));
                 break;
             } else {
-                m.Add(t - (9 * i));
+                destinations.Add(sq - (9 * i));
             }
         }
         for (int i = 1; i < distances[6] + 1; i++) {
-            if (char.IsLetter(board[t + (9 * i)])) {
-                if (CheckNotFriendly(t + (9 * i), board)) m.Add(t + (9 * i));
+            if (char.IsLetter(board[sq + (9 * i)])) {
+                if (CheckNotFriendly(sq + (9 * i), board)) destinations.Add(sq + (9 * i));
                 break;
             } else {
-                m.Add(t + (9 * i));
+                destinations.Add(sq + (9 * i));
             }
         }
         for (int i = 1; i < distances[7] + 1; i++) {
-            if (char.IsLetter(board[t + (7 * i)])) {
-                if (CheckNotFriendly(t + (7 * i), board)) m.Add(t + (7 * i));
+            if (char.IsLetter(board[sq + (7 * i)])) {
+                if (CheckNotFriendly(sq + (7 * i), board)) destinations.Add(sq + (7 * i));
                 break;
             } else {
-                m.Add(t + (7 * i));
+                destinations.Add(sq + (7 * i));
             }
         }
-        Dictionary<int, List<int>> moves = new Dictionary<int, List<int>>() { { t, m } };
+        List<Move> moves = new List<Move>();
+        foreach (int destination in destinations) {
+            moves.Add(new Move(sq, destination));
+        }
         return moves;
     }
 
-    public Dictionary<int, List<int>> GetQueenMoves(int t, char[] board) {
-        Dictionary<int, List<int>> moves = GetRookMoves(t, board);
-        Dictionary<int, List<int>> temp = GetBishopMoves(t, board);
+    public List<Move> GetQueenMoves(int t, char[] board) {
+        List<Move> moves = GetRookMoves(t, board);
+        List<Move> temp = GetBishopMoves(t, board);
         if (temp != null) {
-            foreach (KeyValuePair<int, List<int>> i in temp) {
-                if (moves.ContainsKey(i.Key)) {
-                    foreach (int x in i.Value) {
-                        moves[i.Key].Add(x);
-                    }
-                } else {
-                    moves.Add(i.Key, i.Value);
-                }
+            foreach (Move move in temp) {
+                moves.Add(move);
             }
         }
         return moves;
     }
 
-    public Dictionary<int, List<int>> GetKingMoves(Colour colour, int t, char[] board) {
-        int[] distances = GetDistance(t);
-        List<int> m = new List<int>();
-        if (distances[0] > 0 && CheckNotFriendly(t - 8, board)) m.Add(t - 8);
-        if (distances[1] > 0 && CheckNotFriendly(t + 8, board)) m.Add(t + 8);
-        if (distances[2] > 0 && CheckNotFriendly(t + 1, board)) m.Add(t + 1);
-        if (distances[3] > 0 && CheckNotFriendly(t - 1, board)) m.Add(t - 1);
-        if (distances[4] > 0 && CheckNotFriendly(t - 7, board)) m.Add(t - 7);
-        if (distances[5] > 0 && CheckNotFriendly(t - 9, board)) m.Add(t - 9);
-        if (distances[6] > 0 && CheckNotFriendly(t + 9, board)) m.Add(t + 9);
-        if (distances[7] > 0 && CheckNotFriendly(t + 7, board)) m.Add(t + 7);
+    public List<Move> GetKingMoves(Colour colour, int sq, char[] b) {
+        int[] distances = GetDistance(sq);
+        List<Move> moves = new List<Move>();
+        if (distances[0] > 0 && CheckNotFriendly(sq - 8, b)) moves.Add(new Move(sq, sq - 8));
+        if (distances[1] > 0 && CheckNotFriendly(sq + 8, b)) moves.Add(new Move(sq, sq + 8));
+        if (distances[2] > 0 && CheckNotFriendly(sq + 1, b)) moves.Add(new Move(sq, sq + 1));
+        if (distances[3] > 0 && CheckNotFriendly(sq - 1, b)) moves.Add(new Move(sq, sq - 1));
+        if (distances[4] > 0 && CheckNotFriendly(sq - 7, b)) moves.Add(new Move(sq, sq - 7));
+        if (distances[5] > 0 && CheckNotFriendly(sq - 9, b)) moves.Add(new Move(sq, sq - 9));
+        if (distances[6] > 0 && CheckNotFriendly(sq + 9, b)) moves.Add(new Move(sq, sq + 9));
+        if (distances[7] > 0 && CheckNotFriendly(sq + 7, b)) moves.Add(new Move(sq, sq + 7));
         //Castling logic
-        bool[] c = gameLogic.Castling;
-        if(colour == Colour.White) {
-            if (c[0]) {
-                if(!char.IsLetter(board[5]) && !char.IsLetter(board[6])) {
-                    m.Add(6);
-                }
+        
+        bool[] c = board.Castling;
+        if (colour == Colour.White) {
+            if (c[0] && !char.IsLetter(b[5]) && !char.IsLetter(b[6])) {
+                
+                moves.Add(new Move(sq, 6, 2));
             }
-            if (c[1]) {
-                if (!char.IsLetter(board[3]) && !char.IsLetter(board[2]) && !char.IsLetter(board[1])) {
-                    m.Add(2);
-                }
-            } 
+            if (c[1] && !char.IsLetter(b[3]) && !char.IsLetter(b[2]) && !char.IsLetter(b[1])) {
+                moves.Add(new Move(sq, 2, 2));
+            }
         } else {
-            if (c[2]) {
-                if (!char.IsLetter(board[61]) && !char.IsLetter(board[62])) {
-                    m.Add(62);
-                }
+            if (c[2] && !char.IsLetter(b[61]) && !char.IsLetter(b[62])) {
+                moves.Add(new Move(sq, 62, 2));
+
             }
-            if (c[3]) {
-                if (!char.IsLetter(board[59]) && !char.IsLetter(board[58]) && !char.IsLetter(board[57])) {
-                    m.Add(58);
-                }
+            if (c[3] && !char.IsLetter(b[59]) && !char.IsLetter(b[58]) && !char.IsLetter(b[57])) {
+                moves.Add(new Move(sq, 58, 2));
             }
+
         }
-
-
-        Dictionary<int, List<int>> moves = new Dictionary<int, List<int>>() { { t, m } };
         return moves;
     }
 

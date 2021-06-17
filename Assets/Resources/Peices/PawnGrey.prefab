@@ -102,13 +102,17 @@ MonoBehaviour:
   m_GameObject: {fileID: 4235972124536418472}
   m_Enabled: 1
   m_EditorHideFlags: 0
-  m_Script: {fileID: 11500000, guid: 604be11f8904428419b7b6a4e39686c6, type: 3}
+  m_Script: {fileID: 11500000, guid: 99c7bb507dfc05b4793ff18893127810, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  inDanger: 0
+  selected: 0
   colour: 0
   tile: {fileID: 0}
-  standard: {fileID: 2100000, guid: 7fd30eb7f3abd174e8ac20d24b895d25, type: 2}
-  greenOutline: {fileID: 2100000, guid: 549163206b84ff64191ea7047a146ae0, type: 2}
-  redOutline: {fileID: 2100000, guid: fbb9fef0003382649b927ab503f13f2d, type: 2}
+  standard: {fileID: 2100000, guid: 35528c2fc2aebbc48b00c5098b5dc0dc, type: 2}
+  greenOutline: {fileID: 0}
+  redOutline: {fileID: 0}
   tiles: []
-  board: 0000
+  board: 
+  pos: 
+  allow: 
