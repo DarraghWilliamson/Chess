@@ -37,12 +37,8 @@ public class GameLogic {
     
 
     public void StartTurn() {
-        possableMoves = null;
-        //check if in check, if true, check checkmate
-        check = false;
-        //check code?
         possableMoves = board.GeneratMoves();
-
+        if (show) onCheck?.Invoke();
         if (board.turnColour != playerColour && AiOn == true) {
             artificialPlayer.TakeTurn();
         }
@@ -59,14 +55,19 @@ public class GameLogic {
         onTurnEnd?.Invoke();
         StartTurn();
     }
+    public void Check() {
+        onCheck?.Invoke();
+    }
 
     //converts current board to FEN format and prints
     public void ExportFen() {
         //Test();
-        //board.MoveTest(1);
-        //board.MoveTest(2);
-        board.MoveTest(3);
-        board.MoveTest(4);
+        board.MoveTest(1);
+        board.MoveTest(2);
+        //board.MoveTest(3);
+        //
+        //board.MoveTest(4);
+        //board.MoveTest(5);
 
         string FEN = "";
         

@@ -18,7 +18,7 @@ public class GameDisplay : MonoBehaviour {
 
     private void Start() {
         gameLogic = GameLogic.instance;
-        gameLogic.onTurnEnd += OnTurnEnd;
+        //gameLogic.onTurnEnd += OnTurnEnd;
     }
 
 
@@ -27,6 +27,7 @@ public class GameDisplay : MonoBehaviour {
         if (tiles[s].piece.pos.Contains(m.EndSquare)) return; else tiles[s].piece.pos.Add(m.EndSquare);
     }
 
+    /*
     void OnTurnEnd() {
         if (gameLogic.board.En) {
             Enp.transform.position = tiles[gameLogic.board.Enpassant].transform.position;
@@ -35,7 +36,7 @@ public class GameDisplay : MonoBehaviour {
             Enp.SetActive(false);
         }
     }
-
+    */
     public void UpdateDisplay(Move move) {
         if (move.MoveFlag == Move.Flag.Castling) {
             bool kingSide = move.EndSquare == 6 || move.EndSquare == 62;

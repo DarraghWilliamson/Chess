@@ -7,9 +7,9 @@ public class Setup : MonoBehaviour {
     int playerColour;
     public Tile[] tiles = new Tile[64];
     public int[] origin;
-    readonly string startFEN = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    readonly string startFENasd = "rnbqkbnr/pppppppp/8/8/3PP3/8/PPP2PPP/RNBQKBNR w KQkq - 0 0";
-    readonly string startFENaaa = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 1";
+    readonly string startFENj = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    readonly string startFENasd = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0";
+    readonly string startFEN = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
     public GameLogic gameLogic = new GameLogic();
     ArtificialPlayer artificialPlayer;
     Board board = new Board();
@@ -126,7 +126,6 @@ public class Setup : MonoBehaviour {
         board.turnColour = turn;
         board.enemyColour = turn == 0 ? 1 : 0;
         board.isWhitesMove = turn == 0;
-        board.En = en;
         board.MoveCounter = full;
         gameLogic.Setup(board, playerColour, half, full, artificialPlayer, false);
 

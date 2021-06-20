@@ -25,13 +25,16 @@ public class UI : MonoBehaviour {
     }
 
     public void UpdateCheck() {
-        if (gamelogic.check) { check.text = "In Check"; return; }
+        if (gamelogic.board.inCheck) { check.text = "In Check"; } else { check.text = ""; return; }
         if (gamelogic.checkmate) { check.text = "Checkmate."; return; }
-        check.text = "";
     }
 
     public void TEST() {
-        GameLogic.instance.board.CtrlZ(GameLogic.instance.board.lastMove);
+        List<int> sq = GameLogic.instance.board.moveGenerator.SquaresUnderAttack;
+        foreach(int i in sq) {
+            GameDisplay.instance.tiles[i].ShowBlocked();
+        }
+        //
     }
 
     public void FEN() {
@@ -39,7 +42,8 @@ public class UI : MonoBehaviour {
     }
 
     public void ToggleAi() {
-        GameLogic.instance.ToggleAi();
+        GameLogic.instance.board.CtrlZ(GameLogic.instance.board.lastMove);
+        // GameLogic.instance.ToggleAi();
     }
 
     public void TurnChange() {

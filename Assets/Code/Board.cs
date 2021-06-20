@@ -15,27 +15,18 @@ public class Board {
 
     public int[] squares;
     public bool[] Castling;
-
-    public bool isWhitesMove;
-    public int turnColour;
-    public int enemyColour;
+    public bool inCheck, isWhitesMove;
+    public int turnColour, enemyColour;
 
     public Move lastMove;
     public Stack<GameState> gameStates = new Stack<GameState>();
-
-    public bool En;
-    public int Enpassant;
-    public int MoveCounter;
+    int captures, checks;
+    public int Enpassant, MoveCounter;
     public GameLogic gameLogic;
-    MoveGenerator moveGenerator = new MoveGenerator();
+    public MoveGenerator moveGenerator = new MoveGenerator();
 
     public int[] kings;
-    public List<int>[] pawns;
-    public List<int>[] knights;
-    public List<int>[] rooks;
-    public List<int>[] bishops;
-    public List<int>[] queens;
-    public List<int>[] allLists;
+    public List<int>[] pawns, knights, rooks, bishops, queens, allLists;
 
     public List<Move> GeneratMoves() {
         return moveGenerator.GenerateMoves(this);
@@ -62,6 +53,7 @@ public class Board {
     }
 
     public void MovePiece(Move move) {
+
         GameState oldState = new GameState() ;
         int Enpass = Enpassant;
         oldState.Enpassant = Enpass;
@@ -76,10 +68,15 @@ public class Board {
 
         int moveFlag = move.MoveFlag;
 
+        if (inCheck)  checks++;
+
         oldState.CapturedPiece = squares[movingTo];
         if (capturedPieceType != 0) {
             captures++;
             List<int> pieceList = GetList(capturedPieceType, enemyColour);
+            if (pieceList == null || !pieceList.Contains(movingTo) )  {
+                MonoBehaviour.print("S");
+            }
             pieceList.Remove(movingTo);
         }
 
@@ -114,7 +111,6 @@ public class Board {
             squares[EnPawnSquare] = 0;
             List<int> pieceList = pawns[enemyColour];
             pieceList.Remove(EnPawnSquare);
-            MonoBehaviour.print(EnPawnSquare);
         }
 
         squares[movingTo] = movingPiece;
@@ -196,7 +192,7 @@ public class Board {
             squares[rookFrom] = squares[rookTo];
             squares[rookTo] = 0;
             List<int> pieceList = rooks[turnColour];
-            pieceList[pieceList.IndexOf(rookFrom)] = rookTo;
+            pieceList[pieceList.IndexOf(rookTo)] = rookFrom;
         }
 
 
@@ -225,14 +221,14 @@ public class Board {
     }
 
 
-    int captures;
+    
     public void MoveTest(int ina) {
         gameLogic.show = false;
         captures = 0;
         var watch = System.Diagnostics.Stopwatch.StartNew();
         int moves = MoveGenTest(ina);
         watch.Stop();
-        MonoBehaviour.print(moves + " moves, " + captures + " captures in" + watch.ElapsedMilliseconds + "ms");
+        MonoBehaviour.print(moves + " moves, " + captures + " captures, "+checks+" checks in " + watch.ElapsedMilliseconds + " ms");
     }
     int MoveGenTest(int depth) {
         if (depth == 0) return 1;
@@ -257,35 +253,6 @@ public class Board {
         return false;
     }
 
-    //return true if sideColour is in checkmate
-    public bool CheckCheckmate() {
-        List<Move> attemptedMoves = GetLegalMoves();
-        if (attemptedMoves == null || attemptedMoves.Count == 0) {
-            if (attemptedMoves == null) {
-                MonoBehaviour.print("moves null");
-            } else {
-                MonoBehaviour.print(attemptedMoves.Count);
-            }
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-
-    //get all moves that dont place you in check if made
-    public List<Move> GetLegalMoves() {
-        List<Move> allowedmoves = new List<Move>();
-        List<Move> allMoves = GeneratMoves();
-        foreach (Move move in allMoves) {
-            int[] boardClone = GenBoard(move.StartSquare, move.EndSquare, squares);
-            //if they dont put you in check, add
-            if (!CheckCheck(turnColour, boardClone)) {
-                allowedmoves.Add(move);
-            }
-        }
-        return allowedmoves;
-    }
 
 
 }

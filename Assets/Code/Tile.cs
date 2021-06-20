@@ -67,10 +67,7 @@ public class Tile : MonoBehaviour {
         }
     }
 
-    public void ShowMoveable(bool enpas) {
-        if (enpas) {
-            showingEnpas = true;
-        }
+    public void ShowMoveable() {
         if (this.piece != null) ShowTakeable();
         GetComponent<Renderer>().material = moveMat;
         GetComponent<Renderer>().enabled = true;

@@ -85,7 +85,13 @@ public class PieceObject : MonoBehaviour {
         foreach(Move move in moves) {
             if (move.StartSquare == tile.num) {
                 int end = move.EndSquare;
-                if (CheckTile(end) == "move") tiles[end].ShowMoveable(false);
+                if (Piece.Type(board.squares[move.StartSquare]) == Piece.Pawn) {
+                    if((move.EndSquare-move.StartSquare)%8 != 0) {
+                        tiles[end].ShowTakeable();
+                        continue;
+                    }
+                }
+                if (CheckTile(end) == "move") tiles[end].ShowMoveable();
                 if (CheckTile(end) == "take") tiles[end].ShowTakeable();
                 if (CheckTile(end) == "block") tiles[end].ShowBlocked();
             }
