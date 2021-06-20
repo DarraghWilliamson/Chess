@@ -3,18 +3,13 @@ using System.Collections.Generic;
 using UnityEngine;
 using System;
 
-public enum Colour { 
-        White, 
-        Black 
-    };
-
 public readonly struct Move {
-
     public readonly struct Flag {
         public const int None = 0;
         public const int EnPassantCapture = 1;
         public const int Castling = 2;
         public const int PawnDoubleMove = 3;
+        public const int Promotion = 4;
     }
 
     private readonly int flag;
@@ -52,32 +47,27 @@ public readonly struct Move {
 
 }
 
-public struct Piece {
-    public int location;
-    public List<Move> moves;
-    public Piece(int l, List<Move> m) {
-        this.location = l;
-        this.moves = m;
-    }
-}
+public enum Colour {
+    White,
+    Black
+};
+
+
 
 public struct GameState {
-    private readonly char[] c;
-    public char[] Board { get { return c; } }
-    private readonly Colour t;
-    public Colour Turn { get { return t; } }
-    private readonly bool[] cas;
-    public bool[] Castling { get { return cas; } }
-    private readonly int enpa;
-    public int Enpassant { get { return enpa; } }
-    private readonly bool e;
-    public bool En { get { return e; } }
+    private int[] sq;
+    public int[] Squares { get { return sq; } set { sq = value; } }
+    private bool[] cas;
+    public bool[] Castling { get { return cas; } set { cas = value; } }
+    private int enpa;
+    public int Enpassant { get { return enpa; } set { enpa = value; } }
+    private int cap;
+    public int CapturedPiece { get { return cap; } set { cap = value; } }
 
-    public GameState(char[] c, Colour t, bool[] cas,int enpa, bool e) {
-        this.c = c;
-        this.t = t;
+    public GameState(int[] c, bool[] cas,int enpa, int cap) {
+        this.sq = c;
         this.cas = cas;
         this.enpa = enpa;
-        this.e = e;
+        this.cap = cap;
     }
 }

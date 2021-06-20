@@ -28,7 +28,7 @@ public class Tile : MonoBehaviour {
     }
 
     public override string ToString() {
-        string r = this.name +" " + this.num + board.board[num];
+        string r = this.name +" " + this.num;
         if (piece != null) r = r + " - " + piece.name;
         return r;
     }
@@ -36,8 +36,17 @@ public class Tile : MonoBehaviour {
     public void OnMouseDown() {
         if (showingBlocked) return;
         if (showingTakeable || showingMoveable) {
-            Move m = new Move(gameDisplay.SelectedPeice.tile.num, num);
-            board.MovePeiceCheck(m);
+            List<Move> posibilities = new List<Move>();
+            foreach(Move move in gameLogic.possableMoves) {
+                if(move.StartSquare == gameDisplay.SelectedPeice.tile.num) {
+                    if(move.EndSquare == num) {
+                        posibilities.Add(move);
+                    }
+                }
+            }
+            if (posibilities.Count != 1) print("mult");
+            Move m = posibilities[0];
+            board.MovePiece(m);
             return;
         }
         if (piece == null) {
@@ -88,7 +97,7 @@ public class Tile : MonoBehaviour {
     public void ShowTakeable() {
         GetComponent<Renderer>().material = takeMat;
         GetComponent<Renderer>().enabled = true;
-        if(char.ToLower(board.board[num])!='e') piece.InDanger();
+        //if(char.ToLower(board.squares[num])!='e') piece.InDanger();
         showingTakeable = true;
         gameDisplay.activatedTiles.Add(this);
     }

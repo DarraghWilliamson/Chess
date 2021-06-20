@@ -13,33 +13,30 @@ public class PieceObject : MonoBehaviour {
     public Tile[] tiles;
     GameDisplay gameDisplay;
     GameLogic gameLogic;
-    PieceLogic pieceLogic;
     Board board;
-    public char[] charBoard;
-    
+    public int[] inBoard;
 
-    public List<int> pos, allow;
+
+    public List<int> pos;
 
     private void Start() {
-        pieceLogic = PieceLogic.instance;
         gameDisplay = GameDisplay.instance;
         gameLogic = GameLogic.instance;
         board = gameLogic.board;
-        charBoard = board.board;
+        inBoard = board.squares;
     }
 
     private void OnMouseDown() {
-        
-        List<int> a = new List<int>();
-        foreach (Move move in pieceLogic.GetMoves(tile.num)) {
-            a.Add(move.EndSquare);
-            
-        }
-        pos = a;
-
-            if (!gameLogic.MyTurn()) return;
+        if (!gameLogic.MyTurn()) return;
         if ((gameLogic.playerColour != colour) && inDanger) {
-            board.MovePeiceCheck(new Move(gameDisplay.SelectedPeice.tile.num, tile.num));
+            List<Move> posibilities = new List<Move>();
+            foreach (Move move in gameLogic.possableMoves) {
+                if (move.StartSquare == gameDisplay.SelectedPeice.tile.num) {
+                    if (move.EndSquare == tile.num) {
+                        posibilities.Add(move);
+                    }
+                }
+            }
             return;
         }
         if (!selected && (gameLogic.playerColour == colour)) {
@@ -71,11 +68,11 @@ public class PieceObject : MonoBehaviour {
     }
 
     string CheckTile(int i) {
-        char t = board.board[i];
-        if (!char.IsLetter(t)) {
+        int t = board.squares[i];
+        if (t==0) {
             return "move";
         } else {
-            if (char.IsUpper(board.board[i]) != (colour == 1)) {
+            if (Piece.IsColour(board.squares[i], Piece.White) != (colour == 1)) {
                 return "block";
             } else {
                 return "take";

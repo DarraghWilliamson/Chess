@@ -11,9 +11,8 @@ public class GameLogic {
     public bool check, checkmate, AiOn;
     public List<Move> possableMoves;
     ArtificialPlayer artificialPlayer;
-    GameDisplay gameDisplay;
-    bool show = true;
-    public Piece[] pieces;
+    public GameDisplay gameDisplay;
+    public bool show = true;
     public Board board;
 
     public delegate void OnTurnEnd();
@@ -24,7 +23,7 @@ public class GameLogic {
 
     public GameLogic() { instance = this; }
 
-    public void Setup(Board _board, Colour _turn, int _playerColour, int _halfMove, int _fullMove, ArtificialPlayer _artificialPlayer, bool _AiOn) {
+    public void Setup(Board _board, int _playerColour, int _halfMove, int _fullMove, ArtificialPlayer _artificialPlayer, bool _AiOn) {
         board = _board;
         playerColour = _playerColour;
         halfMove = _halfMove;
@@ -34,72 +33,77 @@ public class GameLogic {
         AiOn = _AiOn;
 
     }
+
     
+
     public void StartTurn() {
         possableMoves = null;
         //check if in check, if true, check checkmate
         check = false;
-        if (board.CheckCheck(board.turnColour, board.board)) {
-            if (board.CheckCheckmate(board.turnColour, board.board)) {
-                checkmate = true;
-                onCheck?.Invoke();
-            } else {
-                check = true;
-                onCheck?.Invoke();
-            }
-        } else {
-            check = false;
-            onCheck?.Invoke();
-        }
-
-
-        possableMoves = board.GetLegalMoves(board.turnColour, board.board);
-        for (int i = 0; i < pieces.Length; i++) {
-            pieces[i].moves = board.GetLegalMove(pieces[i].location);
-        }
+        //check code?
+        possableMoves = board.GeneratMoves();
 
         if (board.turnColour != playerColour && AiOn == true) {
             artificialPlayer.TakeTurn();
         }
     }
 
+
+    public void EndTurn(Move move) {
+        if (show) gameDisplay.UpdateDisplay(move);
+        if (show) Log(move);
+        if (show) onTurnEnd?.Invoke();
+        StartTurn();
+    }
     public void EndTurn() {
-        //if(show) gameDisplay.MovePieceObject(from, to);
-        board.ChangeTurn();
         onTurnEnd?.Invoke();
         StartTurn();
     }
-    
+
     //converts current board to FEN format and prints
     public void ExportFen() {
-        board.MoveTest(1);
-        board.MoveTest(2);
+        //Test();
+        //board.MoveTest(1);
+        //board.MoveTest(2);
         board.MoveTest(3);
-        //MoveTest(4);
+        board.MoveTest(4);
 
         string FEN = "";
-        int rank = 0;
+        
         int emptyCount = 0;
-        //board
-        foreach (char square in board.board) {
-            if (rank == 8) {
-                if (emptyCount != 0) {
-                    FEN += emptyCount.ToString();
-                    emptyCount = 0;
+        int[] squares = board.squares;
+        for(int file = 7;file >= 0; file--) {
+            emptyCount = 0;
+            for(int rank = 0; rank < 8; rank++) {
+                int i = file * 8 + rank;
+                if (squares[i] == 0) {
+                    emptyCount++;
+                } else {
+                    if (emptyCount != 0) {
+                        FEN += emptyCount.ToString();
+                        emptyCount = 0;
+                    }
+                    char pieceChar = ' ';
+                    int pieceType = Piece.Type(squares[i]);
+                    switch (pieceType) {
+                        case Piece.King: pieceChar = 'k'; break;
+                        case Piece.Pawn: pieceChar = 'p'; break;
+                        case Piece.Rook: pieceChar = 'r'; break;
+                        case Piece.Knight: pieceChar = 'n'; break;
+                        case Piece.Bishop: pieceChar = 'b'; break;
+                        case Piece.Queen: pieceChar = 'q'; break;
+                    }
+                    if (Piece.IsColour(squares[i], Piece.White)) {
+                        FEN += char.ToUpper(pieceChar);
+                    } else {
+                        FEN += pieceChar;
+                    }
                 }
-                FEN += "/";
-                rank = 0;
             }
-            if (char.IsLetter(square)) {
-                if (emptyCount != 0) {
-                    FEN += emptyCount.ToString();
-                }
-                emptyCount = 0;
-                FEN += square;
-            } else {
-                emptyCount++;
+            if(emptyCount!=0) {
+                FEN += emptyCount.ToString();
             }
-            rank++;
+            if (file != 0) FEN += '/';
         }
         //turn
         FEN += board.turnColour == 0 ? " w " : " b ";
@@ -115,8 +119,8 @@ public class GameLogic {
             FEN += castling + " ";
         }
         //Enpassant
-        if (En) {
-            FEN += Enpassant + " ";
+        if (board.Enpassant != 99) {
+            FEN += GetBoardRep(board.Enpassant) + " ";
         } else {
             FEN += "- ";
         }
@@ -139,8 +143,40 @@ public class GameLogic {
     }
 
     public void ChangeTeam() {
-
         if (playerColour == 0) playerColour = 1; else playerColour = 0;
+    }
+
+    void Log(Move move) {
+        int from = move.StartSquare;
+        int to = move.EndSquare;
+        int[] squares = board.squares;
+        string notation = "";
+        if (Piece.Type(squares[from]) != Piece.Pawn) {
+            notation += squares[from];
+        } else {
+            if (squares[to] != 0) {
+                notation += GetBoardRep(from)[0];
+            }
+        }
+        if (squares[to] != 0) {
+            notation += "x";
+        }
+        notation += GetBoardRep(to);
+        if (Piece.Type(squares[from]) != Piece.King && Math.Abs(from - to) == 2) {
+            if (to == 62 || to == 6) {
+                notation = "0-0";
+            } else {
+                notation = "0-0-0";
+            }
+        }
+        //Debug.Log(notation);
+    }
+    string GetBoardRep(int sq) {
+        int rank = (sq / 8) + 1;
+        int t = sq % 8;
+        char file = (char)(t + 65);
+        string s = file + "" + rank;
+        return s;
     }
 
 }

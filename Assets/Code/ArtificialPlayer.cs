@@ -19,7 +19,7 @@ public class ArtificialPlayer {
 
     public void TakeTurn() {
         //Dictionary<int, List<int>> moves = gameLogic.possableMoves;
-        List<Move> moves = gameLogic.board.GetLegalMoves(AiColour, gameLogic.board.board);
+        List<Move> moves = gameLogic.board.GeneratMoves();
         if (moves.Count==0) {
             Debug.Log("AI has no moves");
             return;
@@ -29,7 +29,7 @@ public class ArtificialPlayer {
     
     public void MoveRandom(List<Move> moves) {
         int a = rand.Next(moves.Count);
-        gameLogic.board.MovePeiceCheck(moves[a]);
+        gameLogic.board.MovePiece(moves[a]);
     }
 
     
