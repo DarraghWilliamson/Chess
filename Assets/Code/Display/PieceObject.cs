@@ -8,6 +8,7 @@ public class PieceObject : MonoBehaviour {
 
     public bool inDanger, selected;
     public int colour = 0;
+    public int type = 0;
     public Tile tile;
     public Material standard, greenOutline, redOutline;
     public Tile[] tiles;
@@ -37,6 +38,9 @@ public class PieceObject : MonoBehaviour {
                     }
                 }
             }
+            if (posibilities.Count != 1) print("mult");
+            Move m = posibilities[0];
+            board.MovePiece(m);
             return;
         }
         if (!selected && (gameLogic.playerColour == colour)) {

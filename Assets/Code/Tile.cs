@@ -11,6 +11,14 @@ public class Tile : MonoBehaviour {
     GameDisplay gameDisplay;
     GameLogic gameLogic;
     Board board;
+    readonly Dictionary<int, string> dictString = new Dictionary<int, string>() {
+        [Piece.Pawn] = "Pawn",
+        [Piece.Bishop] = "Bishop",
+        [Piece.Knight] = "Knight",
+        [Piece.Rook] = "Rook",
+        [Piece.King] = "King",
+        [Piece.Queen] = "Queen"
+    };
 
     private void Start() {
         gameLogic = GameLogic.instance;
@@ -27,9 +35,16 @@ public class Tile : MonoBehaviour {
         peice_.GetComponent<PieceObject>().tile = this;
     }
 
+    
+
     public override string ToString() {
         string r = this.name +" " + this.num;
-        if (piece != null) r = r + " - " + piece.name;
+        int p = board.squares[num];
+        r = r + " - " + board.squares[num];
+        if (p != 0) {
+            r += Piece.Colour(p) == 0 ? " White" : " Black";
+            r += dictString[Piece.Type(p)];
+        }
         return r;
     }
 
@@ -92,9 +107,11 @@ public class Tile : MonoBehaviour {
     }
 
     public void ShowTakeable() {
+        if (piece != null) {
+            piece.InDanger();
+        }
         GetComponent<Renderer>().material = takeMat;
         GetComponent<Renderer>().enabled = true;
-        //if(char.ToLower(board.squares[num])!='e') piece.InDanger();
         showingTakeable = true;
         gameDisplay.activatedTiles.Add(this);
     }

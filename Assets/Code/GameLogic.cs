@@ -5,15 +5,14 @@ using System;
 public class GameLogic {
 
     public static GameLogic instance;
-    public int playerColour = 0;
 
-    public int halfMove, fullMove;
-    public bool check, checkmate, AiOn;
+    public int halfMove, fullMove, playerColour;
+    public bool check, checkmate, AiOn, show = true;
     public List<Move> possableMoves;
     ArtificialPlayer artificialPlayer;
     public GameDisplay gameDisplay;
-    public bool show = true;
     public Board board;
+    
 
     public delegate void OnTurnEnd();
     public OnTurnEnd onTurnEnd;
@@ -31,22 +30,17 @@ public class GameLogic {
         artificialPlayer = _artificialPlayer;
         gameDisplay = GameDisplay.instance;
         AiOn = _AiOn;
-
     }
-
     
-
     public void StartTurn() {
-        possableMoves = board.GeneratMoves();
+        possableMoves = board.GenerateMoves();
         if (show) onCheck?.Invoke();
         if (board.turnColour != playerColour && AiOn == true) {
             artificialPlayer.TakeTurn();
         }
     }
-
-
     public void EndTurn(Move move) {
-        if (show) gameDisplay.UpdateDisplay(move);
+        if (show) gameDisplay.RefreshDisplay();
         if (show) Log(move);
         if (show) onTurnEnd?.Invoke();
         StartTurn();
@@ -59,18 +53,20 @@ public class GameLogic {
         onCheck?.Invoke();
     }
 
-    //converts current board to FEN format and prints
-    public void ExportFen() {
-        //Test();
-        board.MoveTest(1);
-        board.MoveTest(2);
+    public void Tests() {
+        //board.MoveTest(1);
+        //board.MoveTest(2);
         //board.MoveTest(3);
-        //
         //board.MoveTest(4);
         //board.MoveTest(5);
+        board.MoveTestSplit(5);
+        //board.MoveTest(1);
+        //board.MoveTest(1);
+    }
 
+    //converts current board to FEN format and prints to console
+    public void ExportFen() {
         string FEN = "";
-        
         int emptyCount = 0;
         int[] squares = board.squares;
         for(int file = 7;file >= 0; file--) {
@@ -146,7 +142,7 @@ public class GameLogic {
     public void ChangeTeam() {
         if (playerColour == 0) playerColour = 1; else playerColour = 0;
     }
-
+    //logs moves to conosle
     void Log(Move move) {
         int from = move.StartSquare;
         int to = move.EndSquare;
@@ -172,11 +168,11 @@ public class GameLogic {
         }
         //Debug.Log(notation);
     }
-    string GetBoardRep(int sq) {
+    public string GetBoardRep(int sq) {
         int rank = (sq / 8) + 1;
         int t = sq % 8;
         char file = (char)(t + 65);
-        string s = file + "" + rank;
+        string s = char.ToLower(file) + "" + rank;
         return s;
     }
 

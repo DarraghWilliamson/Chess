@@ -9,7 +9,10 @@ public readonly struct Move {
         public const int EnPassantCapture = 1;
         public const int Castling = 2;
         public const int PawnDoubleMove = 3;
-        public const int Promotion = 4;
+        public const int PromotionRook = 4;
+        public const int PromotionBishop = 5;
+        public const int PromotionKnight = 6;
+        public const int PromotionQueen = 7;
     }
 
     private readonly int flag;
@@ -32,6 +35,11 @@ public readonly struct Move {
         this.to = t;
         this.flag = flag;
     }
+    public bool IsPromotion {
+        get {
+            return flag == 4 || flag == 5 || flag == 6 || flag == 7;
+        }
+    }
 
     public bool IsCastle {
         get {
@@ -47,27 +55,23 @@ public readonly struct Move {
 
 }
 
-public enum Colour {
-    White,
-    Black
-};
-
-
-
 public struct GameState {
     private int[] sq;
-    public int[] Squares { get { return sq; } set { sq = value; } }
+    public int[] Squares { get { return sq; }  }
     private bool[] cas;
-    public bool[] Castling { get { return cas; } set { cas = value; } }
+    public bool[] Castling { get { return cas; }}
     private int enpa;
-    public int Enpassant { get { return enpa; } set { enpa = value; } }
+    public int Enpassant { get { return enpa; } }
     private int cap;
-    public int CapturedPiece { get { return cap; } set { cap = value; } }
+    public int CapturedPiece { get { return cap; } }
+    private List<int>[] li;
+    public List<int>[] Lists { get { return li; } }
 
-    public GameState(int[] c, bool[] cas,int enpa, int cap) {
+    public GameState(int[] c, bool[] cas,int enpa, int cap, List<int>[]li) {
         this.sq = c;
         this.cas = cas;
         this.enpa = enpa;
         this.cap = cap;
+        this.li = li;
     }
 }

@@ -40,9 +40,13 @@ public class UI : MonoBehaviour {
     public void FEN() {
         GameLogic.instance.ExportFen();
     }
+    public void Tests() {
+        GameLogic.instance.Tests();
+    }
 
     public void ToggleAi() {
-        GameLogic.instance.board.CtrlZ(GameLogic.instance.board.lastMove);
+        GameLogic.instance.board.CtrlZ(GameLogic.instance.board.gameMoves.Pop()); ;
+
         // GameLogic.instance.ToggleAi();
     }
 

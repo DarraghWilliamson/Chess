@@ -7,14 +7,15 @@ public class Setup : MonoBehaviour {
     int playerColour;
     public Tile[] tiles = new Tile[64];
     public int[] origin;
-    readonly string startFENj = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
-    readonly string startFENasd = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0";
-    readonly string startFEN = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
+    readonly string startFEN1 = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    readonly string startFEN2 = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0";
+    readonly string startFEN3 = "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1";
+    readonly string startFEN4 = "r3k2r/p1ppqpb1/bn2P1p1/4N3/1p2n3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0";
     public GameLogic gameLogic = new GameLogic();
     ArtificialPlayer artificialPlayer;
     Board board = new Board();
 
-    Dictionary<int, string> dictString = new Dictionary<int, string>() {
+    readonly Dictionary<int, string> dictString = new Dictionary<int, string>() {
         [Piece.Pawn] = "Pawn",
         [Piece.Bishop] = "Bishop",
         [Piece.Knight] = "Knight",
@@ -22,8 +23,7 @@ public class Setup : MonoBehaviour {
         [Piece.King] = "King",
         [Piece.Queen] = "Queen"
     };
-
-    Dictionary<char, int> dictInt = new Dictionary<char, int>() {
+    readonly Dictionary<char, int> dictInt = new Dictionary<char, int>() {
         ['p'] = Piece.Pawn,
         ['b'] = Piece.Bishop,
         ['n'] = Piece.Knight,
@@ -34,15 +34,13 @@ public class Setup : MonoBehaviour {
 
     void Start() {
         playerColour = 0;
-        origin = new int[64];
         artificialPlayer = new ArtificialPlayer(1);
-        LoadFEN(startFEN);
+        origin = new int[64];
+        LoadFEN(startFEN2);
         tiles = SetUpTiles();
-        new PieceLogic();
         PlacePieces();
         GameDisplay.instance.tiles = tiles;
-        GameDisplay.instance.deathBlack = CreateDeathVectors(new Vector3(70, 0, -110), -20, 70);
-        GameDisplay.instance.deathWhite = CreateDeathVectors(new Vector3(-70, 0, 110), 20, -70);
+        
         gameLogic.StartTurn();
     }
 
@@ -52,7 +50,6 @@ public class Setup : MonoBehaviour {
         int Enpassant = 0;
         int half;
         int full;
-        bool en;
 
         string[] split = FEN.Split(new char[] { ' ' });
 
@@ -84,12 +81,9 @@ public class Setup : MonoBehaviour {
             if (ch == 'q') Castling[3] = true;
         }
         if (split[3][0] != '-') {
-            en = true;
             int temp1 = ((int)char.ToUpper(split[3][0])) - 65;
             int temp2 = 64 - (((int)char.GetNumericValue(split[3][1])) * 8);
             Enpassant = (temp1 + temp2);
-        } else {
-            en = false;
         }
         half = Int32.Parse(split[4]);
         full = Int32.Parse(split[5]);
@@ -125,7 +119,6 @@ public class Setup : MonoBehaviour {
         board.Enpassant = Enpassant;
         board.turnColour = turn;
         board.enemyColour = turn == 0 ? 1 : 0;
-        board.isWhitesMove = turn == 0;
         board.MoveCounter = full;
         gameLogic.Setup(board, playerColour, half, full, artificialPlayer, false);
 
@@ -155,6 +148,13 @@ public class Setup : MonoBehaviour {
     }
 
     public void PlacePieces() {
+        GameObject[] kings = new GameObject[2];
+        List<GameObject>[] pawns = { new List<GameObject>(), new List<GameObject>() };
+        List<GameObject>[] knights = { new List<GameObject>(), new List<GameObject>() };
+        List<GameObject>[] rooks = { new List<GameObject>(), new List<GameObject>() };
+        List<GameObject>[] bishops = { new List<GameObject>(), new List<GameObject>() };
+        List<GameObject>[] queens = { new List<GameObject>(), new List<GameObject>() };
+        List<GameObject>[] all = { pawns[0], knights[0], rooks[0], bishops[0], queens[0], pawns[1], knights[1], rooks[1], bishops[1], queens[1] };
         GameObject White = new GameObject("White");
         GameObject Black = new GameObject("Black");
 
@@ -179,27 +179,35 @@ public class Setup : MonoBehaviour {
                 if (colour == "black") piece.transform.rotation = Quaternion.Euler(0, 180, 0);
                 piece.name = colour + dictString[Piece.Type(origin[i])];
                 piece.GetComponent<PieceObject>().tiles = tiles;
+                piece.GetComponent<PieceObject>().type = origin[i];
+
+                int col = colour == "White" ? 0 : 1;
+                switch (Piece.Type(origin[i])) {
+                    case Piece.King: kings[col] =  piece;break;
+                    case Piece.Pawn: pawns[col].Add(piece); break;
+                    case Piece.Knight: knights[col].Add(piece); break;
+                    case Piece.Rook: rooks[col].Add(piece); break;
+                    case Piece.Bishop: bishops[col].Add(piece); break;
+                    case Piece.Queen: queens[col].Add(piece); break;
+
+                }
             }
         }
+        GameDisplay.instance.pawns = pawns;
+        GameDisplay.instance.knights = knights;
+        GameDisplay.instance.rooks = rooks;
+        GameDisplay.instance.bishops = bishops;
+        GameDisplay.instance.queens = queens;
+        GameDisplay.instance.kings = kings;
+        GameDisplay.instance.all = all;
+
+
         GameObject temp = Instantiate(Resources.Load<GameObject>("Peices/PawnGrey"), White.transform);
         temp.GetComponent<MeshCollider>().enabled = false;
         temp.SetActive(false);
         GameDisplay.instance.Enp = temp;
     }
 
-    public Vector3[] CreateDeathVectors(Vector3 pos, int x, int y) {
-        Vector3[] vector3s = new Vector3[16];
-        int v = 0;
-        for (int i = 0; i < 2; i++) {
-            for (int i2 = 0; i2 < 8; i2++) {
-                vector3s[v] = pos;
-                v++;
-                pos.x += x;
-            }
-            pos.x = y;
-            pos.z += x;
-        }
-        return vector3s;
-    }
+    
 
 }

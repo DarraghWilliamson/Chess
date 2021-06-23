@@ -13,12 +13,47 @@ public class GameDisplay : MonoBehaviour {
     public int deadWhite = 0;
     GameLogic gameLogic;
     public GameObject Enp;
+    public List<GameObject> Pieces;
+
+    public GameObject[] kings;
+    public List<GameObject>[] pawns, knights, rooks, bishops, queens, all;
 
     void Awake() { instance = this; }
 
     private void Start() {
         gameLogic = GameLogic.instance;
-        //gameLogic.onTurnEnd += OnTurnEnd;
+        deathBlack = CreateDeathVectors(new Vector3(70, 0, -110), -20, 70);
+        deathWhite = CreateDeathVectors(new Vector3(-70, 0, 110), 20, -70);
+    }
+    
+    //probbaly better ways of doing this 
+    public void RefreshDisplay() {
+        deadBlack = 0;
+        deadWhite = 0;
+        Clear();
+        Unselect();
+        List<int>[] allLists = gameLogic.board.allLists;
+        int[] kingsb = gameLogic.board.kings;
+        for (int i = 0; i < kings.Length; i++){
+            tiles[kingsb[i]].PlacePiece(kings[i].GetComponent<PieceObject>());
+            kings[i].transform.position = tiles[kingsb[i]].transform.position;
+        }
+        for(int x = 0; x < all.Length; x++) {
+            for(int i = 0; i < all[x].Count; i++) {
+                try {
+                    tiles[allLists[x][i]].PlacePiece(all[x][i].GetComponent<PieceObject>());
+                    all[x][i].transform.position = tiles[allLists[x][i]].transform.position;
+                } catch(System.ArgumentOutOfRangeException) {
+                    all[x][i].GetComponent<PieceObject>().Die();
+                }
+            }
+        }
+    }
+
+    public void Clear() {
+        foreach(Tile t in tiles) {
+            t.piece = null;
+        }
     }
 
 
@@ -26,42 +61,7 @@ public class GameDisplay : MonoBehaviour {
         int s = m.StartSquare;
         if (tiles[s].piece.pos.Contains(m.EndSquare)) return; else tiles[s].piece.pos.Add(m.EndSquare);
     }
-
-    /*
-    void OnTurnEnd() {
-        if (gameLogic.board.En) {
-            Enp.transform.position = tiles[gameLogic.board.Enpassant].transform.position;
-            Enp.SetActive(true);
-        } else {
-            Enp.SetActive(false);
-        }
-    }
-    */
-    public void UpdateDisplay(Move move) {
-        if (move.MoveFlag == Move.Flag.Castling) {
-            bool kingSide = move.EndSquare == 6 || move.EndSquare == 62;
-            int rookFrom = kingSide ? move.EndSquare + 1 : move.EndSquare - 2;
-            int rookTo = kingSide ? move.EndSquare - 1 : move.EndSquare + 1;
-            MovePieces(rookFrom, rookTo);
-        }
-        if(move.MoveFlag == Move.Flag.EnPassantCapture) {
-            int Enpassant = move.EndSquare;
-            int EnpCap = (Enpassant >= 16 && Enpassant <= 23) ? Enpassant + 8 : Enpassant - 8;
-            print(EnpCap);
-            tiles[EnpCap].piece.Die();
-        }
-        MovePieces(move.StartSquare, move.EndSquare);
-    }
-
-    public void MovePieces(int from, int to) {
-        Unselect();
-        PieceObject p = tiles[from].piece;
-            if (tiles[to].piece != null) tiles[to].piece.Die();
-            tiles[from].piece = null;
-            tiles[to].PlacePiece(p);
-            p.transform.position = tiles[to].transform.position;
-    }
-
+    
     public void SelectNew(PieceObject peice) {
         if (SelectedPeice != null) {
             SelectedPeice.Unselect();
@@ -75,6 +75,21 @@ public class GameDisplay : MonoBehaviour {
             SelectedPeice.Unselect();
             SelectedPeice = null;
         }
+    }
+    
+    public Vector3[] CreateDeathVectors(Vector3 pos, int x, int y) {
+        Vector3[] vector3s = new Vector3[16];
+        int v = 0;
+        for (int i = 0; i < 2; i++) {
+            for (int i2 = 0; i2 < 8; i2++) {
+                vector3s[v] = pos;
+                v++;
+                pos.x += x;
+            }
+            pos.x = y;
+            pos.z += x;
+        }
+        return vector3s;
     }
 
 }
