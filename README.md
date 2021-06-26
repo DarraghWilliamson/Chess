@@ -1,19 +1,10 @@
 # Chess
-chessAI
+chessAI  
 
--todo
-continue preft testing
-forbid moves that put you in check
-pawn promotion
-actual ai (fun stuff)
+Goal -  
+Create a fully functing chess game with a AI opponant  
+Extra -  
+Make it look nice; add animamations etc
 
--done
-basic board
-Enpassant
-Castling
-Check
-very basic ai opponent 
-forbid moves that dont get you out of check
-undo method for preft tests
-
+![image](https://user-images.githubusercontent.com/36989985/123021464-0ffd9c00-d3cc-11eb-967b-4580710860e1.png)
 
