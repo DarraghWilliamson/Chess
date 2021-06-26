@@ -8,9 +8,8 @@ public class Tile : MonoBehaviour {
     public bool showingMoveable, showingBlocked, showingTakeable, showingEnpas;
     public int num;
     public PieceObject piece;
-    GameDisplay gameDisplay;
-    GameLogic gameLogic;
-    Board board;
+    public GameDisplay gameDisplay;
+    public GameLogic gameLogic;
     readonly Dictionary<int, string> dictString = new Dictionary<int, string>() {
         [Piece.Pawn] = "Pawn",
         [Piece.Bishop] = "Bishop",
@@ -21,9 +20,7 @@ public class Tile : MonoBehaviour {
     };
 
     private void Start() {
-        gameLogic = GameLogic.instance;
-        gameDisplay = GameDisplay.instance;
-        board = gameLogic.board;
+
         selectMat = Resources.Load<Material>("Materials/Select");
         moveMat = Resources.Load<Material>("Materials/Move");
         blockedMat = Resources.Load<Material>("Materials/Block");
@@ -34,13 +31,16 @@ public class Tile : MonoBehaviour {
         piece = peice_;
         peice_.GetComponent<PieceObject>().tile = this;
     }
+    public void RemovePiece() {
+        if (piece != null) piece = null;
+    }
 
     
 
     public override string ToString() {
         string r = this.name +" " + this.num;
-        int p = board.squares[num];
-        r = r + " - " + board.squares[num];
+        int p = gameLogic.board.squares[num];
+        r = r + " - " + gameLogic.board.squares[num];
         if (p != 0) {
             r += Piece.Colour(p) == 0 ? " White" : " Black";
             r += dictString[Piece.Type(p)];
@@ -49,6 +49,16 @@ public class Tile : MonoBehaviour {
     }
 
     public void OnMouseDown() {
+        if (piece == null) {
+            gameDisplay.Unselect();
+            Debug.Log(this);
+        } else {
+            this.piece.OnMouseDown();
+            Debug.Log(this);
+        }
+        
+
+        /*
         if (showingBlocked) return;
         if (showingTakeable || showingMoveable) {
             List<Move> posibilities = new List<Move>();
@@ -61,7 +71,7 @@ public class Tile : MonoBehaviour {
             }
             if (posibilities.Count != 1) print("mult");
             Move m = posibilities[0];
-            board.MovePiece(m);
+            gameLogic.board.MovePiece(m);
             return;
         }
         if (piece == null) {
@@ -70,6 +80,12 @@ public class Tile : MonoBehaviour {
         } else {
             Debug.Log(this);
         }
+        */
+
+
+
+
+
     }
 
     void OnMouseOver() {

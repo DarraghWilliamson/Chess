@@ -9,26 +9,23 @@ public class PieceObject : MonoBehaviour {
     public bool inDanger, selected;
     public int colour = 0;
     public int type = 0;
+    public bool isPromotionPiece;
     public Tile tile;
     public Material standard, greenOutline, redOutline;
     public Tile[] tiles;
-    GameDisplay gameDisplay;
-    GameLogic gameLogic;
-    Board board;
-    public int[] inBoard;
+    public GameDisplay gameDisplay;
+    public GameLogic gameLogic;
+    public bool force = false;
+    public Move ForceMove;
 
-
-    public List<int> pos;
-
-    private void Start() {
-        gameDisplay = GameDisplay.instance;
-        gameLogic = GameLogic.instance;
-        board = gameLogic.board;
-        inBoard = board.squares;
-    }
-
-    private void OnMouseDown() {
+    public void OnMouseDown() {
+        Debug.Log(this.name);
         if (!gameLogic.MyTurn()) return;
+        if (force) {
+            GameDisplay.instance.AddNewPiece(ForceMove);
+            gameLogic.board.MovePiece(ForceMove);
+            return;
+        }
         if ((gameLogic.playerColour != colour) && inDanger) {
             List<Move> posibilities = new List<Move>();
             foreach (Move move in gameLogic.possableMoves) {
@@ -38,14 +35,37 @@ public class PieceObject : MonoBehaviour {
                     }
                 }
             }
-            if (posibilities.Count != 1) print("mult");
-            Move m = posibilities[0];
-            board.MovePiece(m);
-            return;
+            if (posibilities.Count != 1) {
+                SelectPromote(posibilities);
+                return;
+            } else {
+                Move m = posibilities[0];
+                gameLogic.board.MovePiece(m);
+                return;
+            }
         }
-        if (!selected && (gameLogic.playerColour == colour)) {
+        if (!selected && (gameLogic.playerColour == colour) && !isPromotionPiece) {
             selected = true;
             gameDisplay.SelectNew(this);
+        }
+    }
+    void SelectPromote(List<Move> posibilities) {
+        List<GameObject> con;
+        if(gameLogic.board.turnColour == 0) {
+            con = gameDisplay.PromotionWhite;
+        } else {
+            con = gameDisplay.PromotionBlack;
+        }
+        for(int i = 0; i<con.Count;i++) {
+            con[i].SetActive(true);
+        }
+        foreach(Move m in posibilities) {
+            switch (m.MoveFlag) {
+                case Move.Flag.PromotionQueen: con[3].GetComponent<PieceObject>().ForceMove = m; con[3].GetComponent<PieceObject>().force = true; break;
+                case Move.Flag.PromotionBishop:con[2].GetComponent<PieceObject>().ForceMove = m; con[2].GetComponent<PieceObject>().force = true; break;
+                case Move.Flag.PromotionRook: con[0].GetComponent<PieceObject>().ForceMove = m; con[0].GetComponent<PieceObject>().force = true; break;
+                case Move.Flag.PromotionKnight: con[1].GetComponent<PieceObject>().ForceMove = m; con[1].GetComponent<PieceObject>().force = true; break;
+            }
         }
     }
 
@@ -55,6 +75,7 @@ public class PieceObject : MonoBehaviour {
 
     void OnMouseOver() {
         if (inDanger) return;
+        if (gameLogic == null) Debug.Log("asd");
         if (gameLogic.playerColour != colour) return;
         GetComponent<Renderer>().material = greenOutline;
     }
@@ -72,11 +93,11 @@ public class PieceObject : MonoBehaviour {
     }
 
     string CheckTile(int i) {
-        int t = board.squares[i];
+        int t = gameLogic.board.squares[i];
         if (t==0) {
             return "move";
         } else {
-            if (Piece.IsColour(board.squares[i], Piece.White) != (colour == 1)) {
+            if (Piece.IsColour(gameLogic.board.squares[i], Piece.White) != (colour == 1)) {
                 return "block";
             } else {
                 return "take";
@@ -89,7 +110,7 @@ public class PieceObject : MonoBehaviour {
         foreach(Move move in moves) {
             if (move.StartSquare == tile.num) {
                 int end = move.EndSquare;
-                if (Piece.Type(board.squares[move.StartSquare]) == Piece.Pawn) {
+                if (Piece.Type(gameLogic.board.squares[move.StartSquare]) == Piece.Pawn) {
                     if((move.EndSquare-move.StartSquare)%8 != 0) {
                         tiles[end].ShowTakeable();
                         continue;
@@ -103,13 +124,22 @@ public class PieceObject : MonoBehaviour {
     }
 
     public void Unselect() {
+        tile.Hide();
+        List<GameObject> con;
+        if (gameLogic.board.turnColour == 0) {
+            con = gameDisplay.PromotionWhite;
+        } else {
+            con = gameDisplay.PromotionBlack;
+        }
+        foreach (GameObject g in con) g.SetActive(false);
+        
         selected = false;
         GetComponent<Renderer>().material = standard;
         transform.position = new Vector3(transform.position.x, 0, transform.position.z);
         foreach (Tile tile in gameDisplay.activatedTiles) tile.Hide();
         gameDisplay.activatedTiles.Clear();
         foreach (PieceObject piece in gameDisplay.activatedPieces) piece.OutDanger();
-        gameDisplay.activatedTiles.Clear();
+        gameDisplay.activatedPieces.Clear();
     }
 
     public void InDanger() {
@@ -127,10 +157,11 @@ public class PieceObject : MonoBehaviour {
         tile.piece = null;
         GetComponent<MeshCollider>().enabled = false;
         if (colour == 0) {
-            transform.position = gameDisplay.deathWhite[gameDisplay.deadWhite];
+            if (gameDisplay == null) print("D");
+            transform.position = GameDisplay.instance.deathWhite[GameDisplay.instance.deadWhite];
             gameDisplay.deadWhite++;
         } else {
-            transform.position = gameDisplay.deathBlack[gameDisplay.deadBlack];
+            transform.position = GameDisplay.instance.deathBlack[GameDisplay.instance.deadBlack];
             gameDisplay.deadBlack++;
         }
     }

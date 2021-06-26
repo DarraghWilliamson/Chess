@@ -6,13 +6,11 @@ using System;
 public class ArtificialPlayer {
     int AiColour;
     GameLogic gameLogic;
-    GameDisplay gameDisplay;
     System.Random rand = new System.Random();
 
-    public ArtificialPlayer(int colour) {
+    public ArtificialPlayer(int colour, GameLogic gameLogic) {
         AiColour = colour;
-        gameLogic = GameLogic.instance;
-        gameDisplay = GameDisplay.instance;
+        this.gameLogic = gameLogic;
     }
 
     public void TakeTurn() {

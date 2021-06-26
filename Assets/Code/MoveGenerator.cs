@@ -7,14 +7,15 @@ public class MoveGenerator {
     List<Move> moves = new List<Move>();
     const int whiteColourIndex = 0;
     int turnColour, enemyColour, turnPieceCol, enemyPieceCol, king;
+    int[] squares;
     bool inCheck;
     bool[] Castling;
     Board board;
-    public List<int> SquaresUnderAttack = new List<int>();
-    Dictionary<int, List<int>> pinnedPieces = new Dictionary<int, List<int>>();
-    int[] squares;
-    readonly int[] offset = new int[] { -8, 8, 1, -1, -7, -9, 9, 7 };
     List<int> checkMoves = new List<int>();
+    public List<int> SquaresUnderAttack = new List<int>(); //public for test method
+    Dictionary<int, List<int>> pinnedPieces = new Dictionary<int, List<int>>();
+    readonly int[] offset = new int[] { -8, 8, 1, -1, -7, -9, 9, 7 };
+    
 
     public List<Move> GenerateMoves(Board board) {
         checkMoves = new List<int>();
@@ -30,12 +31,20 @@ public class MoveGenerator {
         GetSlideDangerSquares();
         inCheck = InCheckNonSlide();
         pinnedPieces = GetPinned();
-        board.inCheck = inCheck;
 
         GetKingMoves();
         GetPawnMoves();
         GetKnightMoves();
         RookBishopQueen();
+
+        if(inCheck) {
+            if (checkMoves.Count == 0) {
+                board.gameLogic.Check();
+            } else {
+                board.gameLogic.Checkmate();
+            }
+            
+        }
         return moves;
     }
     //returns a int[] with distances to edge in each direction
@@ -304,7 +313,7 @@ public class MoveGenerator {
                         }
                         if (!inCheck || checkMoves.Contains(moveTo)) {
                             //Enpass capture
-                            if (moveTo == board.Enpassant && ValidateEnpassant(sq, moveTo)) {
+                            if (board.Enpassant!=0 && moveTo == board.Enpassant && ValidateEnpassant(sq, moveTo)) {
                                 moves.Add(new Move(sq, moveTo, Move.Flag.EnPassantCapture));
                             }
                             //regular capture

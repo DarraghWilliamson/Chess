@@ -55,6 +55,14 @@ public readonly struct Move {
 
 }
 
+public struct LoadInfo{
+    public int[] squares;
+    public bool[] castling;
+    public int enpassant;
+    public int turnColour;
+    public int turnCount;
+}
+
 public struct GameState {
     private int[] sq;
     public int[] Squares { get { return sq; }  }
