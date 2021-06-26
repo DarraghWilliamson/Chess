@@ -5,9 +5,9 @@ using System.Text;
 using System;
 using System.IO;
 
-public static class Perft{
+public static class Perft {
 
-    static string[] lines; 
+    static string[] lines;
 
     static GameLogic gameLogic;
     struct Test {
@@ -15,7 +15,7 @@ public static class Perft{
         public List<(int, int)> depths;
         public Test(string f) {
             fen = f;
-            depths = new List<(int,int)>();
+            depths = new List<(int, int)>();
         }
     }
 
@@ -33,10 +33,10 @@ public static class Perft{
                 try {
                     uint r = MoveTest(tests[i].depths[d].Item1);
                     con = r == tests[i].depths[d].Item2;
-                    line += " : "+r + " ";
+                    line += " : " + r + " ";
                     line += "" + con.ToString();
                 } catch (ArgumentException e) {
-                    line = "Error: "+e;
+                    line = "Error: " + e;
                     con = false;
                 }
                 result[d] = line;
@@ -54,28 +54,28 @@ public static class Perft{
 
         int dep = 0;
         int res = 0;
-        for (int l = 0; l<lines.Length;l++) {
+        for (int l = 0; l < lines.Length; l++) {
             if (lines[l] == null) continue;
             if (lines[l].StartsWith("//")) continue;
             if (lines[l].StartsWith("FEN: ")) { res++; dep = 0; }
-                if (lines[l].StartsWith("Depth") && !lines[l].EndsWith("true")) {
-                lines[l] += results[res-1][dep];
+            if (lines[l].StartsWith("Depth") && !lines[l].EndsWith("true")) {
+                lines[l] += results[res - 1][dep];
                 dep++;
             }
 
-           }
-        
-        File.WriteAllLines(txtPath, lines); ;
         }
 
-        static List<Test> ReadPerftTests() {
+        File.WriteAllLines(txtPath, lines); ;
+    }
+
+    static List<Test> ReadPerftTests() {
         string txtPath = Path.Combine(Environment.CurrentDirectory, "PerftTests.txt");
         if (!File.Exists(txtPath)) Debug.LogError("nopath");
         List<Test> tests = new List<Test>();
-        
+
         lines = File.ReadAllLines(txtPath);
-        foreach(string line in lines) {
-            if(line == null) continue;
+        foreach (string line in lines) {
+            if (line == null) continue;
             if (line.StartsWith("//")) continue;
             if (line.StartsWith("FEN: ")) {
                 string f = line.Substring(line.IndexOf(' ') + 1);
@@ -117,7 +117,7 @@ public static class Perft{
         board.CtrlZ(move);
         return numPos;
     }
-    
+
     static uint MoveTest(int ina) {
         gameLogic = GameLogic.instance;
         gameLogic.show = false;
@@ -127,9 +127,9 @@ public static class Perft{
         return moves;
         MonoBehaviour.print(moves + " moves, " + watch.ElapsedMilliseconds + " ms");
     }
-    
 
-    public static void MoveTester(string fen, int depth ) {
+
+    public static void MoveTester(string fen, int depth) {
         gameLogic = GameLogic.instance;
         gameLogic.LoadFen(fen);
         gameLogic.show = false;
@@ -138,7 +138,7 @@ public static class Perft{
         watch.Stop();
         MonoBehaviour.print(moves + " moves, " + watch.ElapsedMilliseconds + " ms");
     }
-    
+
     static uint MoveGenTest(int depth) {
         if (depth == 0) return 1;
         List<Move> allMoves = gameLogic.board.GenerateMoves();
@@ -152,7 +152,7 @@ public static class Perft{
     }
     static int e = 0;
     public static void MoveTester2(string fen, int depth) {
-        
+
         gameLogic = GameLogic.instance;
         TranspositionTable t = gameLogic.table;
         gameLogic.LoadFen(fen);
@@ -169,21 +169,21 @@ public static class Perft{
         if (depth == 0) return 1;
 
         uint numPos = 0;
-        List<Move> allMoves = gameLogic.board.GenerateMoves();
 
 
-        uint t = gameLogic.table.GetEnrtyNodes();
 
 
-        if (t == 0) {
+        numPos += gameLogic.table.GetEnrtyNodes();
+
+
+        if (numPos == 0) {
+            List<Move> allMoves = gameLogic.board.GenerateMoves();
             foreach (Move m in allMoves) {
-            gameLogic.board.MovePiece(m);
-            numPos += MoveGenTest2(depth - 1);
-            gameLogic.board.CtrlZ(m);
-        }
+                gameLogic.board.MovePiece(m);
+                numPos += MoveGenTest2(depth - 1);
+                gameLogic.board.CtrlZ(m);
+            }
             gameLogic.table.StoreEntry(numPos);
-        } else {
-            return t;
         }
 
         return numPos;
