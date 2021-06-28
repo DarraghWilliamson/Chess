@@ -4,19 +4,18 @@ using UnityEngine;
 public class GameDisplay {
 
     public static GameDisplay instance;
-    public PieceObject SelectedPeice;
-    public List<Tile> activatedTiles = new List<Tile>();
-    public Tile[] tiles;
-    public List<PieceObject> activatedPieces = new List<PieceObject>();
-    public Vector3[] deathBlack, deathWhite;
     public int deadBlack = 0;
     public int deadWhite = 0;
+    public Vector3[] deathBlack, deathWhite;
+    public Tile[] tiles;
+    public List<Tile> activatedTiles = new List<Tile>();
+    public PieceObject SelectedPeice;
+    public List<PieceObject> activatedPieces = new List<PieceObject>();
     public GameObject Enp;
-    public List<GameObject> Pieces;
-
     public GameObject[] kings;
     public List<GameObject>[] pawns, knights, rooks, bishops, queens, allPieces;
-    public List<GameObject> PromotionBlack, PromotionWhite;
+    public List<GameObject> Pieces, PromotionBlack, PromotionWhite;
+
     public GameDisplay() {
         instance = this;
         deathBlack = CreateDeathVectors(new Vector3(70, 0, -110), -20, 70);
@@ -41,38 +40,29 @@ public class GameDisplay {
             case Move.Flag.PromotionRook: type = Piece.Rook; break;
             case Move.Flag.PromotionKnight: type = Piece.Knight; break;
         }
-
-
         int col = GameLogic.instance.board.turnColour;
         string colour = col == 0 ? "White" : "Black";
-
-            GameObject piece = MonoBehaviour.Instantiate(Resources.Load<GameObject>("Peices/" + dictString[type] + colour));
-
-            Tile tile = tiles[square];
-            tile.piece = piece.GetComponent<PieceObject>();
-            tile.GetComponent<Tile>().PlacePiece(piece.GetComponent<PieceObject>());
-            piece.transform.position = tile.gameObject.transform.position;
-            if (colour == "black") piece.transform.rotation = Quaternion.Euler(0, 180, 0);
-            piece.name = colour + dictString[type];
-            piece.GetComponent<PieceObject>().tiles = tiles;
-            piece.GetComponent<PieceObject>().type = type;
+        GameObject piece = MonoBehaviour.Instantiate(Resources.Load<GameObject>("Peices/" + dictString[type] + colour));
+        Tile tile = tiles[square];
+        tile.piece = piece.GetComponent<PieceObject>();
+        tile.GetComponent<Tile>().piece = (piece.GetComponent<PieceObject>());
+        piece.transform.position = tile.gameObject.transform.position;
+        if (colour == "black") piece.transform.rotation = Quaternion.Euler(0, 180, 0);
+        piece.name = colour + dictString[type];
+        piece.GetComponent<PieceObject>().tiles = tiles;
+        piece.GetComponent<PieceObject>().type = type;
         tile.piece.gameLogic = GameLogic.instance;
-            tile.piece.gameDisplay = this;
-
-
-            
-            switch (type) {
-                case Piece.King: kings[col] = piece; break;
-                case Piece.Pawn: pawns[col].Add(piece); break;
-                case Piece.Knight: knights[col].Add(piece); break;
-                case Piece.Rook: rooks[col].Add(piece); break;
-                case Piece.Bishop: bishops[col].Add(piece); break;
-                case Piece.Queen: queens[col].Add(piece); break;
-
-            }
+        tile.piece.gameDisplay = this;
         
+        switch (type) {
+            case Piece.King: kings[col] = piece; break;
+            case Piece.Pawn: pawns[col].Add(piece); break;
+            case Piece.Knight: knights[col].Add(piece); break;
+            case Piece.Rook: rooks[col].Add(piece); break;
+            case Piece.Bishop: bishops[col].Add(piece); break;
+            case Piece.Queen: queens[col].Add(piece); break;
 
-
+        }
     }
 
     //probbaly better ways of doing this 
@@ -80,35 +70,73 @@ public class GameDisplay {
         deadBlack = 0;
         deadWhite = 0;
         Unselect();
-        List<int>[] allLists = board.allLists;
-        for (int i = 0; i < 64; i++) {
-            tiles[i].RemovePiece();
+        Clear(board);
+        
+        for (int i = 0; i < 2; i++) {
+            PieceObject king = kings[i].GetComponent<PieceObject>();
+            int ind = board.kings[i];
+            king.SetTile(tiles[ind]);
+            tiles[ind].SetPiece(king);
+            kings[i].transform.position = tiles[ind].transform.position;
         }
-        int[] kingsb = board.kings;
-        for (int i = 0; i < kings.Length; i++) {
-            tiles[kingsb[i]].PlacePiece(kings[i].GetComponent<PieceObject>());
-            kings[i].transform.position = tiles[kingsb[i]].transform.position;
-        }
+
         //cycle through piece onjects, place piece down where thers a piece on the board
         //if no place is found kill the piece
-        for (int objList = 0; objList < allPieces.Length; objList++) {
-            for (int obj = 0; obj < allPieces[objList].Count; obj++) {
+        List<int>[] allLists = board.allLists;
+        for (int objList = 0; objList < allLists.Length; objList++) {
+            for (int obj = 0; obj < allLists[objList].Count; obj++) {
+
+
+
                 PieceObject piece = allPieces[objList][obj].GetComponent<PieceObject>();
-                int sq;
-                try {
-                    sq = allLists[objList][obj];
-                } catch (System.ArgumentOutOfRangeException) {
-                    sq = 99;
-                }
-                if (sq == 99) {
-                    piece.Die();
-                    continue;
-                }
-                tiles[sq].PlacePiece(piece);
-                allPieces[objList][obj].transform.position = tiles[sq].transform.position;
+                int ind = allLists[objList][obj];
+                piece.SetTile(tiles[ind]);
+                tiles[ind].SetPiece(piece);
+                piece.gameObject.SetActive(true);
+                allPieces[objList][obj].transform.position = tiles[ind].transform.position;
+
+
             }
         }
+
+
+        /*
+            for (int objList = 0; objList < allPieces.Length; objList++) {
+            for (int obj = 0; obj < allPieces[objList].Count; obj++) {
+                PieceObject piece = allPieces[objList][obj].GetComponent<PieceObject>();
+                try {
+                    allPieces[objList][obj].SetActive(true);
+                    int sq = allLists[objList][obj];
+                    piece.SetTile(tiles[sq]);
+                    tiles[sq].SetPiece(piece);
+                    piece.gameObject.SetActive(true);
+                    allPieces[objList][obj].transform.position = tiles[sq].transform.position;
+                } catch (System.ArgumentOutOfRangeException) {
+                    piece.Die();
+                    piece.gameObject.SetActive(false);
+                    continue;
+                }
+
+            }
+
+
+
+        }
+            */
     }
+
+    void Clear(Board board) {
+        for (int i = 0; i < 64; i++) {
+            tiles[i].piece = null;
+        }
+        List<int>[] allLists = board.allLists;
+        for (int objList = 0; objList < allPieces.Length; objList++) {
+            for (int obj = 0; obj < allPieces[objList].Count; obj++) {
+                allPieces[objList][obj].SetActive(false);
+            }
+        }
+
+            }
 
     public void SelectNew(PieceObject peice) {
         if (SelectedPeice != null) {

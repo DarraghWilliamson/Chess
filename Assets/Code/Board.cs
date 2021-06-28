@@ -1,7 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using System.Text;
+using System;
+using System.IO;
 
 public class Board {
     public MoveGenerator moveGenerator = new MoveGenerator();
@@ -25,12 +26,7 @@ public class Board {
     public Stack<Move> gameMoves;
 
     public int[] kings;
-    public List<int>[] pawns;
-    public List<int>[] knights;
-    public List<int>[] rooks;
-    public List<int>[] bishops;
-    public List<int>[] queens;
-    public List<int>[] allLists;
+    public List<int>[] pawns, knights, rooks, bishops, queens, allLists;
 
     public Board(GameLogic game) {
         gameLogic = game;
@@ -75,6 +71,7 @@ public class Board {
 
     public List<Move> GenerateMoves() {
         return moveGenerator.GenerateMoves(this);
+        
     }
 
     public void Testing() {
@@ -94,7 +91,7 @@ public class Board {
     }
     
     public void MovePiece(Move move) {
-        if (gameLogic.show) Debug.Log(gameLogic.Log(move));
+        if (gameLogic.show) Console.Write(gameLogic.Log(move));
         int movingFrom = move.StartSquare;
         int movingTo = move.EndSquare;
         int capturedPiece = squares[movingTo];
@@ -110,6 +107,9 @@ public class Board {
         //if you captured a piece remove it from the list
         if (capturedPieceType != 0) {
             List<int> pieceList = GetList(capturedPieceType, enemyColour);
+            if (pieceList == null) {
+                Console.Write("null piecelist");
+            }
             pieceList.Remove(movingTo);
             ZobristKey ^= Zobrist.zPieces[enemyColour, capturedPieceType, movingTo];
         }
@@ -201,7 +201,7 @@ public class Board {
         turnColour = turnColour == 0 ? 1 : 0;
         enemyColour = enemyColour == 0 ? 1 : 0;
         if (ZobristKey != Zobrist.GetZobristHash(this)) {
-            Debug.LogError("Zobrist key error\n"+ZobristKey+"\n"+ Zobrist.GetZobristHash(this));
+            Console.Write("Zobrist key error\n"+ZobristKey+"\n"+ Zobrist.GetZobristHash(this));
             
         }
         if (gameLogic.show) gameLogic.EndTurn();
@@ -282,7 +282,7 @@ public class Board {
             ZobristKey ^= Zobrist.zPieces[turnColour, Piece.Rook, rookFrom];
         }
         if (ZobristKey != Zobrist.GetZobristHash(this)) {
-            Debug.LogError("Zobrist key error\n" + ZobristKey + "\n" + Zobrist.GetZobristHash(this));
+            Console.Write("Zobrist key error\n" + ZobristKey + "\n" + Zobrist.GetZobristHash(this));
         }
         if (gameMoves.Count!=0)gameMoves.Pop();
         if (gameLogic.show) gameLogic.EndTurn();

@@ -1,15 +1,15 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using System;
 using System.IO;
 
-public class FEN {
+public static class FEN {
     public readonly static string startFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     public readonly static string[] FenArray = new string[] {
         "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0",
         "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
-        "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8"
+        "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
+        "rnbq1k1r/pp1Pbppp/2p5/8/2B5/P7/1PP1NnPP/RNBQK2R b KQ - 0 0 "
     };
     readonly static Dictionary<char, int> dictInt = new Dictionary<char, int>() {
         ['p'] = Piece.Pawn,
@@ -54,7 +54,7 @@ public class FEN {
         }
         if (split[3][0] != '-') {
             int temp1 = ((int)char.ToUpper(split[3][0])) - 65;
-            int temp2 = 64 - (((int)char.GetNumericValue(split[3][1])) * 8);
+            int temp2 = (((int)char.GetNumericValue(split[3][1])) * 8) - 8;
             Enpassant = (temp1 + temp2);
         }
         half = 0;
@@ -125,7 +125,7 @@ public class FEN {
         //moves
         FEN += "0 ";
         FEN += "0 ";
-        MonoBehaviour.print(FEN);
+        Console.Write(FEN);
     }
 
     static string GetBoardRep(int sq) {

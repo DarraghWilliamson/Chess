@@ -54,7 +54,7 @@ public class Setup : MonoBehaviour {
         Tile[] tiles = GameDisplay.instance.tiles;
         int[] defultPieces = new int[] { 14,11,13,15,9, 14, 11, 13, 10,10,10,10,10,10,10,10,18,18,18,18,18,18,18,18,22,19,21, 22, 19, 21, 17,23};
         int[] promotionPieces = new int[] {14,11,13,15};
-        int[] cords = new int[] {30,10,-10,-30 };
+        int[] promorionCords = new int[] {30,10,-10,-30 };
 
         GameObject[] kings = new GameObject[2];
         List<GameObject>[] pawns = { new List<GameObject>(), new List<GameObject>() };
@@ -63,29 +63,32 @@ public class Setup : MonoBehaviour {
         List<GameObject>[] bishops = { new List<GameObject>(), new List<GameObject>() };
         List<GameObject>[] queens = { new List<GameObject>(), new List<GameObject>() };
         List<GameObject>[] all = { pawns[0], knights[0], rooks[0], bishops[0], queens[0], pawns[1], knights[1], rooks[1], bishops[1], queens[1] };
-        GameObject White = new GameObject("White");
-        GameObject Black = new GameObject("Black");
+       
+
+
         GameObject PromoWhite = new GameObject("PromotionWhite");
         GameObject PromoBlack = new GameObject("PromotionBlack");
         List<GameObject> PromotionWhite = new List<GameObject>();
         List<GameObject> PromotionBlack = new List<GameObject>();
         for (int p = 0; p < promotionPieces.Length; p++) {
             GameObject pieceW = Instantiate(Resources.Load<GameObject>("Peices/Promotion/" + dictString[Piece.Type(promotionPieces[p])] + "White"), PromoWhite.transform);
-            pieceW.transform.position =  new Vector3(110, 0, cords[p]);
+            pieceW.transform.position =  new Vector3(110, 0, promorionCords[p]);
             pieceW.GetComponent<PieceObject>().gameLogic = gameLogic;
             pieceW.GetComponent<PieceObject>().isPromotionPiece = true;
             PromotionWhite.Add(pieceW);
             pieceW.SetActive(false);
             pieceW.transform.rotation = Quaternion.Euler(0, 180, 0);
             GameObject pieceB = Instantiate(Resources.Load<GameObject>("Peices/Promotion/" + dictString[Piece.Type(promotionPieces[p])] + "Black"), PromoBlack.transform);
-            pieceB.transform.position = new Vector3(-110, 0, cords[p]);
+            pieceB.transform.position = new Vector3(-110, 0, promorionCords[p]);
             pieceB.GetComponent<PieceObject>().isPromotionPiece = true;
             PromotionBlack.Add(pieceB);
             pieceB.GetComponent<PieceObject>().gameLogic = gameLogic;
             pieceB.SetActive(false);
         }
-
-
+        
+        
+        GameObject White = new GameObject("White");
+        GameObject Black = new GameObject("Black");
         for (int i = 0; i < defultPieces.Length; i++) {
             if (defultPieces[i] != '\0' && defultPieces[i] != 'e') {
                 string colour;
@@ -100,17 +103,13 @@ public class Setup : MonoBehaviour {
 
                 GameObject piece = Instantiate(Resources.Load<GameObject>("Peices/" + dictString[Piece.Type(defultPieces[i])] + colour), parent.transform);
 
-                Tile tile = tiles[i];
-                tile.piece = piece.GetComponent<PieceObject>();
-                tile.GetComponent<Tile>().PlacePiece(piece.GetComponent<PieceObject>());
-                piece.transform.position = tile.gameObject.transform.position;
                 if (colour == "black") piece.transform.rotation = Quaternion.Euler(0, 180, 0);
                 piece.name = colour + dictString[Piece.Type(defultPieces[i])];
-                piece.GetComponent<PieceObject>().tiles = tiles;
-                piece.GetComponent<PieceObject>().type = defultPieces[i];
-                tile.piece.gameLogic = gameLogic;
-                tile.piece.gameDisplay = gameDisplay;
-
+                PieceObject pObject = piece.GetComponent<PieceObject>();
+                pObject.tiles = tiles;
+                pObject.type = defultPieces[i];
+                pObject.gameLogic = gameLogic;
+                pObject.gameDisplay = gameDisplay;
 
                 int col = colour == "White" ? 0 : 1;
                 switch (Piece.Type(defultPieces[i])) {

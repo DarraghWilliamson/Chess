@@ -1,168 +1,80 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
+using System.Text;
 using System;
+using System.IO;
 
+using static PreComputedMoves;
 public class MoveGenerator {
+    Board board;
     List<Move> moves = new List<Move>();
+
     const int whiteColourIndex = 0;
-    int turnColour, enemyColour, turnPieceCol, enemyPieceCol, king;
+    int turnColour, enemyColour, enemyPieceCol, myKing;
     int[] squares;
     bool inCheck;
+    bool inDoubleCheck;
+    bool pinExists;
     bool[] Castling;
-    Board board;
-    List<int> checkMoves = new List<int>();
-    public List<int> SquaresUnderAttack = new List<int>(); //public for test method
-    Dictionary<int, List<int>> pinnedPieces = new Dictionary<int, List<int>>();
-    readonly int[] offset = new int[] { -8, 8, 1, -1, -7, -9, 9, 7 };
-    
+
+    public List<int> bitmatSquares = new List<int>(); //public for test method
+    Dictionary<int, List<int>> pinnedPieces;
+    int[] pins;
+    ulong[] pinBitboard;
+    ulong SlidingAttackBitmap, KnightAttackBitmap, PawnAttackBitmap, enemyAttackBitmapNoPawns, enemyAttackBitmap, checkBitmap;
 
     public List<Move> GenerateMoves(Board board) {
-        checkMoves = new List<int>();
-        moves = new List<Move>();
+        inCheck = false;
+        inDoubleCheck = false;
+        pinExists = false;
         this.board = board;
+        pinnedPieces = new Dictionary<int, List<int>>();
+        inCheck = false;
+        inDoubleCheck = false;
+        moves = new List<Move>();
+        pins = new int[8];
         Castling = board.Castling;
         turnColour = board.turnColour;
         enemyColour = turnColour == 0 ? 1 : 0;
         enemyPieceCol = (enemyColour == whiteColourIndex) ? Piece.White : Piece.Black;
         squares = board.squares;
-        turnPieceCol = (turnColour == whiteColourIndex) ? Piece.White : Piece.Black;
-        king = turnPieceCol | Piece.King;
-        GetSlideDangerSquares();
-        inCheck = InCheckNonSlide();
-        pinnedPieces = GetPinned();
-
+        myKing = board.kings[turnColour];
+        GenAttackBitboards();
         GetKingMoves();
         GetPawnMoves();
         GetKnightMoves();
         RookBishopQueen();
 
-        if(inCheck) {
-            if (checkMoves.Count == 0) {
-                board.gameLogic.Check();
-            } else {
-                board.gameLogic.Checkmate();
+        board.inCheck = inCheck;
+
+        bitmatSquares.Clear();
+        for (int i = 0; i < 64; i++) {
+            if (BitboardContains(checkBitmap, i)) {
+                bitmatSquares.Add(i);
             }
-            
         }
+
         return moves;
     }
-    //returns a int[] with distances to edge in each direction
-    //south,north,west,east, sw,se,nw,ne
-    int[] GetDistance(int loc) {
-        int[] nsew = new int[8];
-        nsew[0] = loc / 8;
-        nsew[1] = 7 - nsew[0];
-        loc += 8;
-        nsew[3] = loc % 8;
-        nsew[2] = 7 - nsew[3];
-        nsew[4] = Math.Min(nsew[0], nsew[2]);
-        nsew[5] = Math.Min(nsew[0], nsew[3]);
-        nsew[6] = Math.Min(nsew[1], nsew[2]);
-        nsew[7] = Math.Min(nsew[1], nsew[3]);
-        return nsew;
-    }
-    //check if in check from non sliding piece
-    bool InCheckNonSlide() {
-        bool check = false;
-        int sq = board.kings[turnColour];
-        int[] distances = GetDistance(sq);
-        //check for attacking pawns
-        if (turnColour == whiteColourIndex) {
-            if (distances[6] > 0 && squares[sq + 9] == 18) { checkMoves.Add(sq + 9); check = true; }
-            if (distances[7] > 0 && squares[sq + 7] == 18) { checkMoves.Add(sq + 7); check = true; }
-        } else {
-            if (distances[4] > 0 && squares[sq - 7] == 10) { checkMoves.Add(sq -7); check = true; }
-            if (distances[5] > 0 && squares[sq - 9] == 10) { checkMoves.Add(sq -9); check = true; }
-        }
-        //check for attacking knight
-        int enemyKnight = enemyPieceCol | Piece.Knight;
-        List<int> tiles = GetKnightTiles(sq);
-        foreach (int to in tiles) {
-            if (squares[to] == enemyKnight) {
-                checkMoves.Add(to);
-                check = true;
-            }
-        }
-        if (SquaresUnderAttack.Contains(sq)) {
-            check = true;
-        }
-        return check;
-    }
-    Dictionary<int, List<int>> GetPinned() {
-        Dictionary<int, List<int>> pinned = new Dictionary<int, List<int>>();
-        int sq = board.kings[turnColour];
-        int enemyRook = enemyPieceCol | Piece.Rook;
-        int enemyBishop = enemyPieceCol | Piece.Bishop;
-        int enemyQueen = enemyPieceCol | Piece.Queen;
 
-        int[] distances = GetDistance(sq);
-        int[] offset = new int[] { -8, 8, 1, -1, -7, -9, 9, 7 };
-        for (int d = 0; d < 8; d++) {
-            List<int> Temp = new List<int>();
-            int pinnedPos = 0;
-            int friendCount = 0;
-            bool slider = false;
-            for (int i = 1; i < distances[d] + 1; i++) {
-                int to = sq + (offset[d] * i);
-                if (squares[to] == 0) {
-                    Temp.Add(to);
-                    continue;
-                }
-                if (Piece.Colour(squares[to]) == turnColour) {
-                    friendCount++;
-                    pinnedPos = to;
-                    if (friendCount > 1) {
-                        break;
-                    }
-                } else {
-                    if ((d <= 3) && squares[to] == enemyRook) {
-                        Temp.Add(to);
-                        slider = true;
-                    }
-                    if ((d >= 4) && squares[to] == enemyBishop) {
-                        Temp.Add(to);
-                        slider = true;
-                    }
-                    if (squares[to] == enemyQueen) {
-                        Temp.Add(to);
-                        slider = true;
-                    }
-                    break;
-                }
-            }
-            if (slider && friendCount == 0) {
-                inCheck = true;
-                checkMoves.AddRange(Temp);
-            }
-            if (slider && friendCount == 1) {
-                pinned.Add(pinnedPos, Temp);
-            }
-        }
-        return pinned;
+    bool IsEnemy(int piece, int sq) {
+        return Piece.Colour(piece) != sq;
     }
-
-
 
     void GetKingMoves() {
         int sq = board.kings[turnColour];
-        int[] distances = GetDistance(sq);
-        int[] offset = new int[] { -8, 8, 1, -1, -7, -9, 9, 7 };
-        for (int d = 0; d < 8; d++) {
-            if (distances[d] > 1) distances[d] = 1;
-            for (int i = 1; i < distances[d] + 1; i++) {
-                int to = sq + (offset[d] * i);
-                if (squares[to] != 0) {
-                    if (Piece.Colour(squares[to]) != turnColour) {
-                        if (CheckSquare(to)) {
-                            moves.Add(new Move(sq, to));
-                        }
-                    }
-                    break;
-                } else {
+        for (int m = 0; m < kingMoves[sq].Length; m++) {
+            int to = kingMoves[sq][m];
+            if (squares[to] != 0) {
+                if (IsEnemy(squares[to], turnColour)) {
                     if (CheckSquare(to)) {
                         moves.Add(new Move(sq, to));
                     }
+                    continue;
+                }
+            } else {
+                if (CheckSquare(to)) {
+                    moves.Add(new Move(sq, to));
                 }
             }
         }
@@ -186,145 +98,74 @@ public class MoveGenerator {
         }
     }
 
-    //check square for king move
+    //returns true if square is safe
     bool CheckSquare(int sq) {
-        if (SafeMove(sq) && !SquaresUnderAttack.Contains(sq)) {
-            return true;
-        }
-        return false;
-    }
-    //is this sqare safe from non slide attack?
-    bool SafeMove(int sq) {
-        int[] distances = GetDistance(sq);
-        //check for attacking pawns
-        if (turnColour == whiteColourIndex) {
-            if (distances[6] > 0 && squares[sq + 9] == 18) return false;
-            if (distances[7] > 0 && squares[sq + 7] == 18) return false;
-        } else {
-            if (distances[4] > 0 && squares[sq - 7] == 10) return false;
-            if (distances[5] > 0 && squares[sq - 9] == 10) return false;
-        }
-        //check for attacking knight
-        int enemyKnight = enemyPieceCol | Piece.Knight;
-        List<int> tiles = GetKnightTiles(sq);
-        foreach (int to in tiles) {
-            if (squares[to] == enemyKnight) {
-                return false;
-            }
-        }
-        //check for adjacent king
-        int enemyKing = enemyPieceCol | Piece.King;
-        for (int d = 0; d < 8; d++) {
-            if (distances[d] > 1) distances[d] = 1;
-            for (int i = 1; i < distances[d] + 1; i++) {
-                if (squares[sq + (offset[d] * i)] == enemyKing) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-    //get the tiles that are threatened by sliding pieces
-    void GetSlideDangerSquares() {
-        SquaresUnderAttack.Clear();
-        foreach (int s in board.rooks[enemyColour]) SlideAttackSquares(s, 0, 4);
-        foreach (int s in board.bishops[enemyColour]) SlideAttackSquares(s, 4, 8);
-        foreach (int s in board.queens[enemyColour]) SlideAttackSquares(s, 0, 8);
-    }
-    //get the tiles that are threatened by sliding pieces
-    void SlideAttackSquares(int sq, int start, int end) {
-        int[] distances = GetDistance(sq);
-        int[] offset = new int[] { -8, 8, 1, -1, -7, -9, 9, 7 };
-        for (int d = start; d < end; d++) {
-            for (int i = 1; i < distances[d] + 1; i++) {
-                if (squares[sq + (offset[d] * i)] != 0) {
-                    if (squares[sq + (offset[d] * i)] == king) {
-                        SquaresUnderAttack.Add(sq + (offset[d] * i));
-                        continue;
-                    } else {
-                        if (Piece.Colour(squares[sq + (offset[d] * i)]) != turnColour) {
-                            SquaresUnderAttack.Add(sq + (offset[d] * i));
-                        }
-                        break;
-                    }
-                }
-                SquaresUnderAttack.Add(sq + (offset[d] * i));
-            }
-        }
-    }
-
-    //get sliding piece moves
-    void RookBishopQueen() {
-        List<int> RookM = board.rooks[turnColour];
-        List<int> BishopM = board.bishops[turnColour];
-        List<int> QueenM = board.queens[turnColour];
-        foreach (int sq in RookM) Slide(sq, 0, 4);
-        foreach (int sq in BishopM) Slide(sq, 4, 8);
-        foreach (int sq in QueenM) Slide(sq, 0, 8);
+        return !BitboardContains(enemyAttackBitmap, sq);
     }
 
     void GetPawnMoves() {
         int offset = (turnColour == whiteColourIndex) ? 8 : -8;
+        //{ 8, -8, -1, 1, 7, 9, -9, -7 };
         int[] diagnols = (turnColour == whiteColourIndex) ? new int[] { 6, 7 } : new int[] { 4, 5 };
-        int[] diagnolOffset = (turnColour == whiteColourIndex) ? new int[] { 9, 7 } : new int[] { -7, -9 };
-        List<int> pawnM = board.pawns[turnColour];
-        foreach (int sq in pawnM) {
-            int[] distances = GetDistance(sq);
-            bool doubleMove = distances[turnColour] == 1;
-            bool promotionMove = distances[enemyColour] == 1;
-            int moveTo = sq + offset;
+        int[] diagnolOffset = (turnColour == whiteColourIndex) ? new int[] { 7, 9 } : new int[] { -9, -7, };
+        List<int> pawnList = board.pawns[turnColour];
+        for (int i = 0; i < pawnList.Count; i++) {
+            int pawnSquare = pawnList[i];
+            bool doubleMove = distances[pawnSquare][enemyColour] == 1;
+            bool promotionMove = distances[pawnSquare][turnColour] == 1;
+            int moveTo = pawnSquare + offset;
             //if sqare empty
             if (squares[moveTo] == 0) {
                 //if not pinned or is moving in pin
-                if (!pinnedPieces.ContainsKey(sq) || pinnedPieces[sq].Contains(sq + offset)) {
+                if (!pinExists || (!pinnedPieces.ContainsKey(pawnSquare) || pinnedPieces[pawnSquare].Contains(moveTo))) {
                     //if not in check or is moving to stop check
-                    if (!inCheck || checkMoves.Contains(moveTo)) {
+                    if (!inCheck || InCheckMap(moveTo)) {
                         if (promotionMove) {
-                            moves.Add(new Move(sq, moveTo, 4));
-                            moves.Add(new Move(sq, moveTo, 5));
-                            moves.Add(new Move(sq, moveTo, 6));
-                            moves.Add(new Move(sq, moveTo, 7));
+                            moves.Add(new Move(pawnSquare, moveTo, 4));
+                            moves.Add(new Move(pawnSquare, moveTo, 5));
+                            moves.Add(new Move(pawnSquare, moveTo, 6));
+                            moves.Add(new Move(pawnSquare, moveTo, 7));
                         } else {
-                            moves.Add(new Move(sq, moveTo));
+                            moves.Add(new Move(pawnSquare, moveTo));
                         }
                     }
                     //if can move double and sq empty
                     if (doubleMove && squares[moveTo + offset] == 0) {
                         //recheck check, no need to recheck pin
-                        if (!inCheck || checkMoves.Contains(moveTo + offset)) {
-                            moves.Add(new Move(sq, moveTo + offset, Move.Flag.PawnDoubleMove));
+                        if (!inCheck || InCheckMap(moveTo + offset)) {
+                            moves.Add(new Move(pawnSquare, moveTo + offset, Move.Flag.PawnDoubleMove));
                         }
                     }
                 }
             }
             //check pawn captures
             for (int d = 0; d < 2; d++) {
-                moveTo = sq + diagnolOffset[d];
-                if (distances[diagnols[d]] > 0) {
+                moveTo = pawnSquare + diagnolOffset[d];
+                if (distances[pawnSquare][diagnols[d]] > 0) {
                     //recheck pins
-                    if (!pinnedPieces.ContainsKey(sq) || pinnedPieces[sq].Contains(moveTo)) {
+                    if (!pinnedPieces.ContainsKey(pawnSquare) || pinnedPieces[pawnSquare].Contains(moveTo)) {
                         //recheck check
                         int eset = (turnColour == whiteColourIndex) ? -8 : 8;
-                        if (checkMoves.Contains(board.Enpassant + eset)) {
+                        if (BitboardContains(checkBitmap, board.Enpassant + eset)) {
                             //Enpass capture
-                            if (moveTo == board.Enpassant && ValidateEnpassant(sq, moveTo)) {
-                                moves.Add(new Move(sq, moveTo, Move.Flag.EnPassantCapture));
+                            if (moveTo == board.Enpassant && ValidateEnpassant(pawnSquare, moveTo)) {
+                                moves.Add(new Move(pawnSquare, moveTo, Move.Flag.EnPassantCapture));
                             }
                         }
-                        if (!inCheck || checkMoves.Contains(moveTo)) {
+                        if (!inCheck || InCheckMap(moveTo)) {
                             //Enpass capture
-                            if (board.Enpassant!=0 && moveTo == board.Enpassant && ValidateEnpassant(sq, moveTo)) {
-                                moves.Add(new Move(sq, moveTo, Move.Flag.EnPassantCapture));
+                            if (board.Enpassant != 0 && moveTo == board.Enpassant && ValidateEnpassant(pawnSquare, moveTo)) {
+                                moves.Add(new Move(pawnSquare, moveTo, Move.Flag.EnPassantCapture));
                             }
                             //regular capture
                             if (squares[moveTo] != 0 && Piece.Colour(squares[moveTo]) != turnColour) {
                                 if (promotionMove) {
-                                    moves.Add(new Move(sq, moveTo, 4));
-                                    moves.Add(new Move(sq, moveTo, 5));
-                                    moves.Add(new Move(sq, moveTo, 6));
-                                    moves.Add(new Move(sq, moveTo, 7));
+                                    moves.Add(new Move(pawnSquare, moveTo, 4));
+                                    moves.Add(new Move(pawnSquare, moveTo, 5));
+                                    moves.Add(new Move(pawnSquare, moveTo, 6));
+                                    moves.Add(new Move(pawnSquare, moveTo, 7));
                                 } else {
-                                    moves.Add(new Move(sq, moveTo));
+                                    moves.Add(new Move(pawnSquare, moveTo));
                                 }
                             }
                         }
@@ -333,6 +174,7 @@ public class MoveGenerator {
             }
         }
     }
+
     //check Enpassant capture is actualy legal
     bool ValidateEnpassant(int moveFrom, int moveTo) {
         int Enpassant = board.Enpassant;
@@ -347,10 +189,8 @@ public class MoveGenerator {
         int enemyRook = enemyPieceCol | Piece.Rook;
         int enemyBishop = enemyPieceCol | Piece.Bishop;
         int enemyQueen = enemyPieceCol | Piece.Queen;
-        int[] distances = GetDistance(sq);
-        int[] offset = new int[] { -8, 8, 1, -1, -7, -9, 9, 7 };
         for (int d = 0; d < 8; d++) {
-            for (int i = 1; i < distances[d] + 1; i++) {
+            for (int i = 1; i < distances[sq][d] + 1; i++) {
                 int to = sq + (offset[d] * i);
                 if (copy[to] == 0) {
                     continue;
@@ -375,79 +215,196 @@ public class MoveGenerator {
     }
     void GetKnightMoves() {
         List<int> KnightM = board.knights[turnColour];
-        foreach (int sq in KnightM) {
-            if (pinnedPieces.ContainsKey(sq)) {
+        for (int i = 0; i < KnightM.Count; i++) {
+            int knight = KnightM[i];
+            if (IsPinned(knight)) {
                 continue;
             }
-            List<int> tiles = GetKnightTiles(sq);
-            foreach (int t in tiles) {
-                if (inCheck & !checkMoves.Contains(t)) {
-                    continue;
+
+            for (int kn = 0; kn < knightMoves[knight].Length; kn++) {
+                int to = knightMoves[knight][kn];
+                if (!inCheck || InCheckMap(to)) {
+                    if (squares[to] == 0 || Piece.Colour(squares[to]) != turnColour) {
+                        moves.Add(new Move(knight, to));
+                    }
                 }
-                if (squares[t] != 0 && Piece.Colour(squares[t]) == turnColour) {
-                    continue;
-                }
-                moves.Add(new Move(sq, t));
             }
+
+
+
         }
     }
-    //return the tiles around a piece that a knight could attack 
-    List<int> GetKnightTiles(int sq) {
-        List<int> tiles = new List<int>();
-        int[] distances = GetDistance(sq);
-        if (distances[0] >= 2) {
-            if (distances[2] >= 1) tiles.Add(sq - 15);
-            if (distances[3] >= 1) tiles.Add(sq - 17);
-        }
-        if (distances[1] >= 2) {
-            if (distances[2] >= 1) tiles.Add(sq + 17);
-            if (distances[3] >= 1) tiles.Add(sq + 15);
-        }
-        if (distances[2] >= 2) {
-            if (distances[1] >= 1) tiles.Add(sq + 10);
-            if (distances[0] >= 1) tiles.Add(sq - 6);
-        }
-        if (distances[3] >= 2) {
-            if (distances[1] >= 1) tiles.Add(sq + 6);
-            if (distances[0] >= 1) tiles.Add(sq - 10);
-        }
+    //get sliding piece moves
+    void RookBishopQueen() {
+        List<int> RookM = board.rooks[turnColour];
+        List<int> BishopM = board.bishops[turnColour];
+        List<int> QueenM = board.queens[turnColour];
 
-        return tiles;
+        foreach (int sq in RookM) Slide(sq, 0, 4);
+        foreach (int sq in BishopM) Slide(sq, 4, 8);
+        foreach (int sq in QueenM) Slide(sq, 0, 8);
     }
     //get attacks for sliding pieces
     void Slide(int sq, int start, int end) {
-        int[] distances = GetDistance(sq);
-        if (sq == board.kings[turnColour]) {
-            for (int x = 0; x < distances.Length; x++) {
-                if (distances[x] > 1) distances[x] = 1;
-            }
+        if (inCheck && pinnedPieces.ContainsKey(sq)) {
+            return;
         }
-        int[] offset = new int[] { -8, 8, 1, -1, -7, -9, 9, 7 };
+
+
         for (int d = start; d < end; d++) {
-            for (int i = 1; i < distances[d] + 1; i++) {
+            for (int i = 1; i < distances[sq][d] + 1; i++) {
                 int moveTo = sq + (offset[d] * i);
-                if (squares[moveTo] != 0) {
-                    if (Piece.Colour(squares[moveTo]) != turnColour) {
-                        //if not pinned or is moving in pin
-                        if (!pinnedPieces.ContainsKey(sq) || pinnedPieces[sq].Contains(moveTo)) {
-                            //if not in check or is moving to stop check
-                            if (!inCheck || checkMoves.Contains(moveTo)) {
-                                moves.Add(new Move(sq, moveTo));
-                            }
-                        }
-                    }
+                //if blocked by friendly, stop searching in this direction
+                if (squares[moveTo] != 0 && Piece.Colour(squares[moveTo]) == turnColour) {
                     break;
+                }
+                //if is pinned and move is not in pin
+                if (pinnedPieces.ContainsKey(sq) && !pinnedPieces[sq].Contains(moveTo)) {
+                    continue;
+                }
+                //if in check and this move dosnt remove check
+                if (inCheck && !InCheckMap(moveTo)) {
+                    continue;
+                }
+                //square empty
+                if (squares[moveTo] == 0) {
+                    moves.Add(new Move(sq, moveTo));
+                    continue;
                 } else {
-                    if (!pinnedPieces.ContainsKey(sq) || pinnedPieces[sq].Contains(moveTo)) {
-                        if (!inCheck || checkMoves.Contains(moveTo)) {
-                            moves.Add(new Move(sq, moveTo));
-                        }
-                    }
+                    //if not empty is blocked by enemy blocked by enemy
+                    moves.Add(new Move(sq, moveTo));
+                    break;
+
                 }
             }
         }
 
     }
+
+    void GenAttackBitboards() {
+        checkBitmap = 0;
+        GenBitboardSlide();
+        GenBitboardPins();
+        GenBitboardKnight();
+        GenBitboardPawn();
+        enemyAttackBitmapNoPawns = SlidingAttackBitmap | KnightAttackBitmap | kingAttackBitboards[board.kings[enemyColour]];
+        enemyAttackBitmap = enemyAttackBitmapNoPawns | PawnAttackBitmap;
+    }
+
+    void GenBitboardPins() {
+        pinBitboard = new ulong[8];
+        int enemyRook = enemyPieceCol | Piece.Rook;
+        int enemyBishop = enemyPieceCol | Piece.Bishop;
+        int enemyQueen = enemyPieceCol | Piece.Queen;
+        for (int d = 0; d < 8; d++) {
+            List<int> pinTemp = new List<int>();
+            int pinnedPos = 0;
+            ulong tempBitmap = 0;
+            int friendCount = 0;
+            bool dangerPiece = false;
+
+            for (int i = 1; i < distances[myKing][d] + 1; i++) {
+                int newSquare = myKing + (offset[d] * i);
+                if (squares[newSquare] == 0) {
+                    pinTemp.Add(newSquare);
+                    tempBitmap |= 1ul << newSquare;
+                    continue;
+                }
+                if (Piece.Colour(squares[newSquare]) == turnColour) {
+                    friendCount++;
+                    pinnedPos = newSquare;
+                    if (friendCount > 1) {
+                        break;
+                    }
+                } else {
+                    int enemyPiece = squares[newSquare];
+                    if ((d <= 3) && enemyPiece == enemyRook || (d >= 4) && enemyPiece == enemyBishop || enemyPiece == enemyQueen) {
+                        pinTemp.Add(newSquare);
+                        tempBitmap |= 1ul << newSquare;
+                        dangerPiece = true;
+                    }
+                    break;
+                }
+            }
+            if (dangerPiece && friendCount == 0) {
+                checkBitmap |= tempBitmap;
+                inDoubleCheck = inCheck;
+                inCheck = true;
+            }
+            if (dangerPiece && friendCount == 1) {
+                pinExists = true;
+                pinnedPieces.Add(pinnedPos, pinTemp);
+            }
+            if (inDoubleCheck) {
+                break;
+            }
+        }
+    }
+
+    void GenBitboardPawn() {
+        List<int> PawnM = board.pawns[enemyColour];
+        PawnAttackBitmap = 0;
+        for (int i = 0; i < PawnM.Count; i++) {
+            PawnAttackBitmap |= pawnAttackBitboards[PawnM[i]][enemyColour];
+            if (BitboardContains(pawnAttackBitboards[PawnM[i]][enemyColour], myKing)) {
+                inDoubleCheck = inCheck;
+                inCheck = true;
+                checkBitmap |= 1ul << PawnM[i];
+            }
+        }
+    }
+
+    void GenBitboardKnight() {
+        List<int> KnightM = board.knights[enemyColour];
+        KnightAttackBitmap = 0;
+        for (int i = 0; i < KnightM.Count; i++) {
+            KnightAttackBitmap |= knightAttackBitboards[KnightM[i]];
+            if (BitboardContains(knightAttackBitboards[KnightM[i]], myKing)) {
+                inDoubleCheck = inCheck;
+                inCheck = true;
+                checkBitmap |= 1ul << KnightM[i];
+            }
+        }
+    }
+
+    void GenBitboardSlide() {
+        SlidingAttackBitmap = 0;
+        List<int> RookM = board.rooks[enemyColour];
+        List<int> BishopM = board.bishops[enemyColour];
+        List<int> QueenM = board.queens[enemyColour];
+        foreach (int sq in RookM) SlideAttacks(sq, 0, 4);
+        foreach (int sq in BishopM) SlideAttacks(sq, 4, 8);
+        foreach (int sq in QueenM) SlideAttacks(sq, 0, 8);
+    }
+
+    void SlideAttacks(int sq, int start, int end) {
+        for (int d = start; d < end; d++) {
+            for (int i = 1; i < distances[sq][d] + 1; i++) {
+                int moveTo = sq + (offset[d] * i);
+                SlidingAttackBitmap |= 1ul << moveTo;
+                if (moveTo != myKing) {
+                    if (board.squares[moveTo] != 0) {
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
+    bool IsPinned(int square) {
+        return pinExists && pinnedPieces.ContainsKey(square);
+    }
+
+    bool InCheckMap(int square) {
+        return inCheck && ((checkBitmap >> square) & 1) != 0;
+    }
+    bool BitboardContains(ulong board, int sq) {
+        return ((board >> sq) & 1) != 0;
+    }
+
+
+
+
 
 
 }

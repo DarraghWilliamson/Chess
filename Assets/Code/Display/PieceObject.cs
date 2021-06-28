@@ -6,22 +6,21 @@ using UnityEngine;
 
 public class PieceObject : MonoBehaviour {
 
-    public bool inDanger, selected;
+    public bool inDanger, selected, isPromotionPiece;
     public int colour = 0;
     public int type = 0;
-    public bool isPromotionPiece;
     public Tile tile;
     public Material standard, greenOutline, redOutline;
     public Tile[] tiles;
     public GameDisplay gameDisplay;
     public GameLogic gameLogic;
-    public bool force = false;
+
+    public bool promotion = false;
     public Move ForceMove;
 
     public void OnMouseDown() {
-        Debug.Log(this.name);
         if (!gameLogic.MyTurn()) return;
-        if (force) {
+        if (promotion) {
             GameDisplay.instance.AddNewPiece(ForceMove);
             gameLogic.board.MovePiece(ForceMove);
             return;
@@ -49,6 +48,11 @@ public class PieceObject : MonoBehaviour {
             gameDisplay.SelectNew(this);
         }
     }
+    
+    public void SetTile(Tile tile) {
+        this.tile = tile;
+    }
+
     void SelectPromote(List<Move> posibilities) {
         List<GameObject> con;
         if(gameLogic.board.turnColour == 0) {
@@ -61,10 +65,10 @@ public class PieceObject : MonoBehaviour {
         }
         foreach(Move m in posibilities) {
             switch (m.MoveFlag) {
-                case Move.Flag.PromotionQueen: con[3].GetComponent<PieceObject>().ForceMove = m; con[3].GetComponent<PieceObject>().force = true; break;
-                case Move.Flag.PromotionBishop:con[2].GetComponent<PieceObject>().ForceMove = m; con[2].GetComponent<PieceObject>().force = true; break;
-                case Move.Flag.PromotionRook: con[0].GetComponent<PieceObject>().ForceMove = m; con[0].GetComponent<PieceObject>().force = true; break;
-                case Move.Flag.PromotionKnight: con[1].GetComponent<PieceObject>().ForceMove = m; con[1].GetComponent<PieceObject>().force = true; break;
+                case Move.Flag.PromotionQueen: con[3].GetComponent<PieceObject>().ForceMove = m; con[3].GetComponent<PieceObject>().promotion = true; break;
+                case Move.Flag.PromotionBishop:con[2].GetComponent<PieceObject>().ForceMove = m; con[2].GetComponent<PieceObject>().promotion = true; break;
+                case Move.Flag.PromotionRook: con[0].GetComponent<PieceObject>().ForceMove = m; con[0].GetComponent<PieceObject>().promotion = true; break;
+                case Move.Flag.PromotionKnight: con[1].GetComponent<PieceObject>().ForceMove = m; con[1].GetComponent<PieceObject>().promotion = true; break;
             }
         }
     }

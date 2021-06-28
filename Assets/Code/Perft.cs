@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using System.Text;
 using System;
 using System.IO;
@@ -49,7 +48,7 @@ public static class Perft {
 
     static void WritePerftTests(string[][] results) {
         string txtPath = Path.Combine(Environment.CurrentDirectory, "PerftTests.txt");
-        if (!File.Exists(txtPath)) Debug.LogError("nopath");
+        if (!File.Exists(txtPath)) Console.Write("nopath");
 
 
         int dep = 0;
@@ -70,7 +69,7 @@ public static class Perft {
 
     static List<Test> ReadPerftTests() {
         string txtPath = Path.Combine(Environment.CurrentDirectory, "PerftTests.txt");
-        if (!File.Exists(txtPath)) Debug.LogError("nopath");
+        if (!File.Exists(txtPath)) Console.Write("nopath");
         List<Test> tests = new List<Test>();
 
         lines = File.ReadAllLines(txtPath);
@@ -93,7 +92,11 @@ public static class Perft {
     }
 
 
-    public static void MoveTestSplit(int depth) {
+    public static void MoveTestSplit(string fen, int depth) {
+        gameLogic = GameLogic.instance;
+        gameLogic.LoadFen(fen);
+        gameLogic.show = false;
+
         StringBuilder sb = new StringBuilder();
         gameLogic = GameLogic.instance;
         uint total = 0;
@@ -105,10 +108,9 @@ public static class Perft {
             total += moves;
             sb.Append(gameLogic.GetBoardRep(allMoves[i].StartSquare) + gameLogic.GetBoardRep(allMoves[i].EndSquare) + ": " + moves + "\n");
         }
-        Debug.Log(total + " total moves" + " in " + watch.ElapsedMilliseconds + " ms\n" + sb.ToString());
+        Console.Write(total + " total moves" + " in " + watch.ElapsedMilliseconds + " ms\n" + sb.ToString());
         watch.Stop();
     }
-
     static uint MoveGenTestSplt(int depth, Move move, Board board) {
         if (depth == 0) return 1;
         uint numPos = 0;
@@ -125,7 +127,7 @@ public static class Perft {
         uint moves = MoveGenTest(ina);
         watch.Stop();
         return moves;
-        MonoBehaviour.print(moves + " moves, " + watch.ElapsedMilliseconds + " ms");
+        //MonoBehaviour.print(moves + " moves, " + watch.ElapsedMilliseconds + " ms");
     }
 
 
@@ -136,7 +138,7 @@ public static class Perft {
         var watch = System.Diagnostics.Stopwatch.StartNew();
         uint moves = MoveGenTest(depth);
         watch.Stop();
-        MonoBehaviour.print(moves + " moves, " + watch.ElapsedMilliseconds + " ms");
+        Console.Write(moves + " moves, " + watch.ElapsedMilliseconds + " ms");
     }
 
     static uint MoveGenTest(int depth) {
@@ -150,32 +152,22 @@ public static class Perft {
         }
         return numPos;
     }
-    static int e = 0;
     public static void MoveTester2(string fen, int depth) {
 
         gameLogic = GameLogic.instance;
-        TranspositionTable t = gameLogic.table;
         gameLogic.LoadFen(fen);
         gameLogic.show = false;
         var watch = System.Diagnostics.Stopwatch.StartNew();
-
         uint moves = MoveGenTest2(depth);
-        Debug.Log(e);
         watch.Stop();
-        MonoBehaviour.print(moves + " moves, " + watch.ElapsedMilliseconds + " ms");
+        Console.Write(moves + " moves, " + watch.ElapsedMilliseconds + " ms");
     }
 
     static uint MoveGenTest2(int depth) {
         if (depth == 0) return 1;
 
         uint numPos = 0;
-
-
-
-
         numPos += gameLogic.table.GetEnrtyNodes();
-
-
         if (numPos == 0) {
             List<Move> allMoves = gameLogic.board.GenerateMoves();
             foreach (Move m in allMoves) {

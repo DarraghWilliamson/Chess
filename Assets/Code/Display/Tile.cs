@@ -5,7 +5,7 @@ using UnityEngine;
 
 public class Tile : MonoBehaviour {
     Material moveMat, selectMat, blockedMat, takeMat;
-    public bool showingMoveable, showingBlocked, showingTakeable, showingEnpas;
+    public bool showingMoveable, showingBlocked, showingTakeable;
     public int num;
     public PieceObject piece;
     public GameDisplay gameDisplay;
@@ -20,23 +20,12 @@ public class Tile : MonoBehaviour {
     };
 
     private void Start() {
-
         selectMat = Resources.Load<Material>("Materials/Select");
         moveMat = Resources.Load<Material>("Materials/Move");
         blockedMat = Resources.Load<Material>("Materials/Block");
         takeMat = Resources.Load<Material>("Materials/Take");
     }
-
-    public void PlacePiece(PieceObject peice_) {
-        piece = peice_;
-        peice_.GetComponent<PieceObject>().tile = this;
-    }
-    public void RemovePiece() {
-        if (piece != null) piece = null;
-    }
-
     
-
     public override string ToString() {
         string r = this.name +" " + this.num;
         int p = gameLogic.board.squares[num];
@@ -49,18 +38,14 @@ public class Tile : MonoBehaviour {
     }
 
     public void OnMouseDown() {
-        if (piece == null) {
-            gameDisplay.Unselect();
-            Debug.Log(this);
-        } else {
-            this.piece.OnMouseDown();
-            Debug.Log(this);
-        }
-        
 
-        /*
         if (showingBlocked) return;
-        if (showingTakeable || showingMoveable) {
+        //if takable refer to piece
+        if (showingTakeable) {
+            piece.OnMouseDown();
+        }
+        //if moveable fine the move
+        if (showingMoveable) {
             List<Move> posibilities = new List<Move>();
             foreach(Move move in gameLogic.possableMoves) {
                 if(move.StartSquare == gameDisplay.SelectedPeice.tile.num) {
@@ -70,22 +55,20 @@ public class Tile : MonoBehaviour {
                 }
             }
             if (posibilities.Count != 1) print("mult");
-            Move m = posibilities[0];
-            gameLogic.board.MovePiece(m);
+            gameLogic.board.MovePiece(posibilities[0]);
             return;
         }
+        //if no piece/move, log
         if (piece == null) {
             gameDisplay.Unselect();
             Debug.Log(this);
         } else {
             Debug.Log(this);
         }
-        */
+    }
 
-
-
-
-
+    public void SetPiece(PieceObject piece) {
+        this.piece = piece;
     }
 
     void OnMouseOver() {
@@ -97,7 +80,12 @@ public class Tile : MonoBehaviour {
             GetComponent<Renderer>().enabled = false;
         }
     }
-
+    public void ShowBlocked() {
+        GetComponent<Renderer>().material = blockedMat;
+        GetComponent<Renderer>().enabled = true;
+        showingBlocked = true;
+        gameDisplay.activatedTiles.Add(this);
+    }
     public void ShowMoveable() {
         if (this.piece != null) ShowTakeable();
         GetComponent<Renderer>().material = moveMat;
@@ -112,16 +100,7 @@ public class Tile : MonoBehaviour {
         showingMoveable = false;
         showingBlocked = false;
         showingTakeable = false;
-        showingEnpas = false;
     }
-
-    public void ShowBlocked() {
-        GetComponent<Renderer>().material = blockedMat;
-        GetComponent<Renderer>().enabled = true;
-        showingBlocked = true;
-        gameDisplay.activatedTiles.Add(this);
-    }
-
     public void ShowTakeable() {
         if (piece != null) {
             piece.InDanger();

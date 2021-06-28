@@ -1,6 +1,5 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using System;
 
 public class ArtificialPlayer {
@@ -17,7 +16,7 @@ public class ArtificialPlayer {
         //Dictionary<int, List<int>> moves = gameLogic.possableMoves;
         List<Move> moves = gameLogic.board.GenerateMoves();
         if (moves.Count==0) {
-            Debug.Log("AI has no moves");
+            Console.Write("AI has no moves");
             return;
         }
         MoveRandom(moves);

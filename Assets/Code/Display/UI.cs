@@ -30,11 +30,14 @@ public class UI : MonoBehaviour {
     }
 
     public void TEST() {
-        List<int> sq = GameLogic.instance.board.moveGenerator.SquaresUnderAttack;
+        List<int> sq = GameLogic.instance.board.moveGenerator.bitmatSquares;
         foreach(int i in sq) {
             GameDisplay.instance.tiles[i].ShowBlocked();
         }
         //
+    }
+    public void Fen() {
+        FEN.ExportFen(GameLogic.instance.board);
     }
     public void Tests() {
         GameLogic.instance.Tests();

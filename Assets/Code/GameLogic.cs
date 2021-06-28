@@ -1,17 +1,16 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
-using UnityEngine;
 using System.Text;
 using System;
 using System.IO;
 
 public class GameLogic {
     public static GameLogic instance;
-    public FEN fen;
     public int halfMove, fullMove, playerColour;
     public bool check, checkmate, AiOn, show = true;
     public List<Move> possableMoves;
     ArtificialPlayer artificialPlayer;
+    public TranspositionTable table;
     public GameDisplay gameDisplay;
     public Board board;
 
@@ -20,7 +19,7 @@ public class GameLogic {
     public delegate void OnCheck();
     public OnCheck onCheck;
 
-    public TranspositionTable table;
+    
     public GameLogic() {
         instance = this;
     }
@@ -31,7 +30,7 @@ public class GameLogic {
         table = new TranspositionTable(board, 64000);
         Zobrist.FillzProperties();
         AiOn = false;
-        LoadFen(startFen);
+        LoadFen(FEN.FenArray[2]);
     }
 
     public void LoadFen(string i) {
@@ -63,17 +62,21 @@ public class GameLogic {
 
 
     public void Tests() {
-        string ne = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
         //Perft.MoveTester(FEN.startFen, 4);
         //Perft.MoveTester2(FEN.startFen, 4);
 
         //Perft.MoveTester(FEN.FenArray[0], 3);
         //Perft.MoveTester2(FEN.FenArray[0], 4);
+        //Perft.MoveTester(FEN.FenArray[3], 2);
+        //Perft.MoveTester2(FEN.FenArray[3], 3);
+        Perft.MoveTestSplit(FEN.FenArray[2], 5);
 
-        //Perft.MoveTester2(FEN.FenArray[1], 4);
 
-        Perft.MoveTester(ne, 4);
-        Perft.MoveTester2(ne, 4);
+        //Perft.MoveTester(FEN.FenArray[2], 2);
+        //Perft.MoveTester(FEN.FenArray[2], 3);
+        //Perft.MoveTester(FEN.FenArray[2], 4);
+        //Perft.MoveTester2(FEN.FenArray[2], 4);
+        //Perft.MoveTester2(FEN.FenArray[2], 1);
 
 
         //Perft.MoveTester("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 4);
@@ -121,8 +124,6 @@ public class GameLogic {
         StringBuilder log = new StringBuilder();
         if (Piece.Type(squares[from]) == Piece.Pawn) {
             if (squares[to] != 0)  log.Append(GetBoardRep(squares[from])[0] + "x");
-                
-            
         } else {
             log.Append(lerretDict[Piece.Type(squares[from])]);
             if (squares[to] != 0) log.Append("x");
@@ -137,6 +138,7 @@ public class GameLogic {
         char file = (char)(t + 65);
         string s = char.ToLower(file) + "" + rank;
         return s;
+
     }
 
 }
