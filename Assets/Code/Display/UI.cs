@@ -30,11 +30,10 @@ public class UI : MonoBehaviour {
     }
 
     public void TEST() {
-        List<int> sq = GameLogic.instance.board.moveGenerator.bitmatSquares;
+        List<int> sq = GameLogic.instance.board.bitmatSquares;
         foreach(int i in sq) {
-            GameDisplay.instance.tiles[i].ShowBlocked();
+            GameDisplay.instance.tiles[i].ShowMoveable();
         }
-        //
     }
     public void Fen() {
         FEN.ExportFen(GameLogic.instance.board);
@@ -44,9 +43,7 @@ public class UI : MonoBehaviour {
     }
 
     public void ToggleAi() {
-        GameLogic.instance.board.CtrlZ(GameLogic.instance.board.gameMoves.Peek()); ;
-
-        // GameLogic.instance.ToggleAi();
+        GameLogic.instance.board.CtrlZ(GameLogic.instance.board.gameMoves.Peek());
     }
 
     public void TurnChange() {
@@ -58,3 +55,4 @@ public class UI : MonoBehaviour {
         UpdateUI();
     }
 }
+

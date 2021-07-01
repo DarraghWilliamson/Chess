@@ -1,15 +1,19 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Text;
 using System;
 using System.IO;
+using UnityEngine;
 
 public static class FEN {
     public readonly static string startFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
+    public readonly static string Kiwipete = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
+    public readonly static string twoMil = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
     public readonly static string[] FenArray = new string[] {
         "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0",
         "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
         "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
-        "rnbq1k1r/pp1Pbppp/2p5/8/2B5/P7/1PP1NnPP/RNBQK2R b KQ - 0 0 "
+        "rnR2k1r/pp2bppp/1qp5/8/2B2N2/8/PPP2nPP/RNBQK2R b KQ - 0 0"
     };
     readonly static Dictionary<char, int> dictInt = new Dictionary<char, int>() {
         ['p'] = Piece.Pawn,
@@ -19,7 +23,6 @@ public static class FEN {
         ['k'] = Piece.King,
         ['q'] = Piece.Queen,
     };
-
 
     public static LoadInfo LoadNewFEN(string FEN) {
         int[] origin = new int[64];
@@ -59,10 +62,12 @@ public static class FEN {
         }
         half = 0;
         full = 0;
-        if (split[4] != "" ) {
-            half = int.Parse(split[4]);
-            if (split.Length >= 6) {
-                full = int.Parse(split[5]);
+        if(split.Length > 4) {
+            if (split[4] != "") {
+                half = int.Parse(split[4]);
+                if (split.Length >= 6) {
+                    full = int.Parse(split[5]);
+                }
             }
         }
         return new LoadInfo { castling = Castling, squares = origin, enpassant = Enpassant, turnColour = turn, turnCount = full };
@@ -125,7 +130,7 @@ public static class FEN {
         //moves
         FEN += "0 ";
         FEN += "0 ";
-        Console.Write(FEN);
+        Debug.Log(FEN);
     }
 
     static string GetBoardRep(int sq) {

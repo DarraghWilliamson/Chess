@@ -3,179 +3,303 @@ using System.Collections.Generic;
 using System.Text;
 using System;
 using System.IO;
+using UnityEngine;
+using System.Numerics;
 
 using static PreComputedMoves;
 public class MoveGenerator {
     Board board;
     List<Move> moves = new List<Move>();
 
-    const int whiteColourIndex = 0;
-    int turnColour, enemyColour, enemyPieceCol, myKing;
+    int turnColour, enemyColour, myKing;
     int[] squares;
-    bool inCheck;
-    bool inDoubleCheck;
-    bool pinExists;
-    bool[] Castling;
-
-    public List<int> bitmatSquares = new List<int>(); //public for test method
-    Dictionary<int, List<int>> pinnedPieces;
-    int[] pins;
-    ulong[] pinBitboard;
-    ulong SlidingAttackBitmap, KnightAttackBitmap, PawnAttackBitmap, enemyAttackBitmapNoPawns, enemyAttackBitmap, checkBitmap;
+    bool inCheck, inDoubleCheck, pinExists;
+    bool[] castling;
+    const ulong debruijn64 = (0x03f79d71b4cb0a89);
+    //const ulong deBruijn64 = 0x03f79d71b4cb0a89UL;
+    public static readonly byte[] index64 = {
+         0, 47,  1, 56, 48, 27,  2, 60,
+         57, 49, 41, 37, 28, 16,  3, 61,
+         54, 58, 35, 52, 50, 42, 21, 44,
+         38, 32, 29, 23, 17, 11,  4, 62,
+         46, 55, 26, 59, 40, 36, 15, 53,
+         34, 51, 20, 43, 31, 22, 10, 45,
+         25, 39, 14, 33, 19, 30,  9, 24,
+         13, 18,  8, 12,  7,  6,  5, 63
+    };
+    ulong slidingAttackBitmap, knightAttackBitmap, pawnAttackBitmap, enemyAttackBitmapNoPawns,
+        enemyAttackBitmap, checkBitmap, turnPieces, enemyPieces, pinBitboard;
+    
+    ulong newmap;
 
     public List<Move> GenerateMoves(Board board) {
+        moves = new List<Move>();
+        this.board = board;
         inCheck = false;
         inDoubleCheck = false;
         pinExists = false;
-        this.board = board;
-        pinnedPieces = new Dictionary<int, List<int>>();
-        inCheck = false;
-        inDoubleCheck = false;
-        moves = new List<Move>();
-        pins = new int[8];
-        Castling = board.Castling;
+        
+        castling = board.Castling;
         turnColour = board.turnColour;
-        enemyColour = turnColour == 0 ? 1 : 0;
-        enemyPieceCol = (enemyColour == whiteColourIndex) ? Piece.White : Piece.Black;
         squares = board.squares;
+        enemyColour = turnColour == 0 ? 1 : 0;
         myKing = board.kings[turnColour];
-        GenAttackBitboards();
+
+        GenerateBitboards();
+        GenerateMoves();
+
+
+        board.bitmatSquares.Clear();
+        for (int i = 0; i < 64; i++) {
+            if (BitboardContains(pinBitboard, i)) {
+                board.bitmatSquares.Add(i);
+            }
+        }
+        
+        board.inCheck = inCheck;
+        return moves;
+    }
+    
+    void GenerateBitboards() {
+        checkBitmap = 0;        
+        enemyPieces = board.pawnsBoard[enemyColour] | board.knightsBoard[enemyColour] | board.bishopsBoard[enemyColour] | board.rooksBoard[enemyColour] | board.queensBoard[enemyColour] | board.kingsBoard[enemyColour];
+        turnPieces = board.pawnsBoard[turnColour] | board.knightsBoard[turnColour] | board.bishopsBoard[turnColour] | board.rooksBoard[turnColour] | board.queensBoard[turnColour] | board.kingsBoard[turnColour];
+
+        GenBitboardSlide();
+        GenBitboardKnight();
+        GenBitboardPawn();
+        enemyAttackBitmapNoPawns = slidingAttackBitmap | knightAttackBitmap | kingAttackBitboards[board.kings[enemyColour]];
+        enemyAttackBitmap = enemyAttackBitmapNoPawns | pawnAttackBitmap;
+    }
+
+    void GenerateMoves() {
         GetKingMoves();
+        if (inDoubleCheck) return; //if in double check only king moves are valid
         GetPawnMoves();
         GetKnightMoves();
         RookBishopQueen();
+    }
+    
+    void GenBitboardSlide() {
+        slidingAttackBitmap = 0;
+        pinBitboard = 0;
+        PieceList rookPieces = board.rooksList[enemyColour];
+        PieceList bishopPieces = board.bishopsList[enemyColour];
+        PieceList queenPieces = board.queensList[enemyColour];
 
-        board.inCheck = inCheck;
-
-        bitmatSquares.Clear();
-        for (int i = 0; i < 64; i++) {
-            if (BitboardContains(checkBitmap, i)) {
-                bitmatSquares.Add(i);
-            }
-        }
-
-        return moves;
+        for (int i = 0; i < rookPieces.length; i++) AddToBitboardSlide(rookPieces[i], 0, 4);
+        for (int i = 0; i < bishopPieces.length; i++) AddToBitboardSlide(bishopPieces[i], 4, 8);
+        for (int i = 0; i < queenPieces.length; i++) AddToBitboardSlide(queenPieces[i], 0, 8);
     }
 
-    bool IsEnemy(int piece, int sq) {
-        return Piece.Colour(piece) != sq;
+    //takes a bitboard and returns a list of bytes for each non zero entry
+    //https://stackoverflow.com/questions/24798499/chess-bitscanning?rq=1
+    public static byte[] BitScan(ulong bitboard) {
+        if (bitboard == 0) return null;
+        var indices = new byte[28];
+        var index = 0;
+        while (bitboard != 0) {
+            indices[index++] = index64[((bitboard ^ (bitboard - 1)) * debruijn64) >> 58];
+            bitboard &= bitboard - 1;
+        }
+        //if no result return null to
+        byte[] a = new byte[index];
+        for (int i = 0; i < index; i++) a[i] = indices[i];
+        return a;
+    }
+    
+    //creates slide attack, pin and check pitboards
+    //shoud be re-done later for better efficency
+    void AddToBitboardSlide(int startSq, int start, int end) {
+        for (int dir = start; dir < end; dir++) {
+            ulong ray = rays[startSq][dir];
+
+            if (ray == 0) continue;
+            if ((ray & board.kingsBoard[turnColour]) != 0) {
+                ulong kingRay = ray & rays[myKing][inverse[dir]];
+                if ((kingRay & enemyPieces) == 0) {
+                    //if no pieces between them, set check
+                    if ((kingRay & turnPieces) == 0) {
+                        inDoubleCheck = inCheck;
+                        inCheck = true;
+                        kingRay |= 1ul << startSq;
+                        checkBitmap |= kingRay;
+                    } else {
+                        //if only a friendly piece, set pin
+                        if (BitScan(kingRay & turnPieces).Length == 1) {
+                            int pin;
+                            if (dir == 0 || dir == 3 || dir == 4 || dir == 5) { //assending index
+                                pin = (int)BitScan(kingRay)[0];
+                            } else { //decending index
+                                byte[] t = BitScan(kingRay);
+                                pin = (int)t[t.Length - 1];
+                            }
+                            ulong pinRay = kingRay & rays[pin][inverse[dir]];
+                            pinExists = true;
+                            kingRay |= 1ul << startSq;
+                            pinRay |= 1ul << startSq;
+                            pinBitboard |= kingRay;
+                            slidingAttackBitmap |= pinRay;
+                            continue;
+                        }
+                    }
+                }
+            }
+            ulong blocks = ray & (turnPieces | enemyPieces);
+            blocks &= ~board.kingsBoard[turnColour];
+            //if no blocks add moves 
+            if (blocks == 0) {
+                byte[] path = BitScan(ray);
+                for(int i = 0; i < path.Length; i++) {
+                    slidingAttackBitmap |= 1ul << (int)path[i];
+                }
+                continue;
+            }
+            int block;
+           //if block exists
+            if (dir == 0 || dir == 3 || dir == 4 || dir == 5) { //assending index
+                block = (int)BitScan(blocks)[0];
+            } else { //decending index
+                byte[] t = BitScan(blocks);
+                block = (int)t[t.Length-1];
+            }
+            //create ray from block to attacker and add moves
+            ulong attackRay = ray & rays[block][inverse[dir]];
+            //if(BitboardContains(turnPieces,block)) 
+                attackRay |= 1ul << block;
+            slidingAttackBitmap |= attackRay;
+        }
+    }
+
+    void GenBitboardKnight() {
+        PieceList knightPieces = board.knightsList[enemyColour];
+        knightAttackBitmap = 0;
+        for (int i = 0; i < knightPieces.length; i++) {
+            knightAttackBitmap |= knightAttackBitboards[knightPieces.pieces[i]];
+            if (BitboardContains(knightAttackBitboards[knightPieces.pieces[i]], myKing)) {
+                inDoubleCheck = inCheck;
+                inCheck = true;
+                checkBitmap |= 1ul << knightPieces.pieces[i];
+            }
+        }
+    }
+    void GenBitboardPawn() {
+        PieceList pawnPieces = board.pawnsList[enemyColour];
+        pawnAttackBitmap = 0;
+        for (int i = 0; i < pawnPieces.length; i++) {
+            pawnAttackBitmap |= pawnAttackBitboards[pawnPieces.pieces[i]][enemyColour];
+            if (BitboardContains(pawnAttackBitboards[pawnPieces.pieces[i]][enemyColour], myKing)) {
+                inDoubleCheck = inCheck;
+                inCheck = true;
+                checkBitmap |= 1ul << pawnPieces.pieces[i];
+            }
+        }
     }
 
     void GetKingMoves() {
-        int sq = board.kings[turnColour];
-        for (int m = 0; m < kingMoves[sq].Length; m++) {
-            int to = kingMoves[sq][m];
-            if (squares[to] != 0) {
-                if (IsEnemy(squares[to], turnColour)) {
-                    if (CheckSquare(to)) {
-                        moves.Add(new Move(sq, to));
-                    }
-                    continue;
-                }
-            } else {
-                if (CheckSquare(to)) {
-                    moves.Add(new Move(sq, to));
-                }
+        ulong kingPiece = kingAttackBitboards[myKing];
+        kingPiece &= ~turnPieces;
+        kingPiece &= ~enemyAttackBitmap;
+        byte[] jumps = BitScan(kingPiece);
+        if (kingPiece != 0) {
+            for (int i = 0; i < jumps.Length; i++) {
+                moves.Add(new Move(myKing, (int)jumps[i]));
             }
         }
-        //Castling logic
         if (!inCheck) {
-            if (turnColour == whiteColourIndex) {
-                if (Castling[0] && Piece.Empty(squares[5]) && Piece.Empty(squares[6])) {
-                    if (CheckSquare(6) && CheckSquare(5)) moves.Add(new Move(sq, 6, 2));
+            if (turnColour == 0) {
+                if (castling[0] && (squares[5] + squares[6] == 0)) {
+                    if (CheckSquare(6) && CheckSquare(5)) moves.Add(new Move(myKing, 6, 2));
                 }
-                if (Castling[1] && Piece.Empty(squares[3]) && Piece.Empty(squares[2]) && Piece.Empty(squares[1])) {
-                    if (CheckSquare(2) && CheckSquare(3)) moves.Add(new Move(sq, 2, 2));
+                if (castling[1] && (squares[3] + squares[2] + squares[1] == 0)) {
+                    if (CheckSquare(2) && CheckSquare(3)) moves.Add(new Move(myKing, 2, 2));
                 }
             } else {
-                if (Castling[2] && Piece.Empty(squares[61]) && Piece.Empty(squares[62])) {
-                    if (CheckSquare(62) && CheckSquare(61)) moves.Add(new Move(sq, 62, 2));
+                if (castling[2] && (squares[61] + squares[62] == 0)) {
+                    if (CheckSquare(62) && CheckSquare(61)) moves.Add(new Move(myKing, 62, 2));
                 }
-                if (Castling[3] && Piece.Empty(squares[59]) && Piece.Empty(squares[58]) && Piece.Empty(squares[57])) {
-                    if (CheckSquare(58) && CheckSquare(59)) moves.Add(new Move(sq, 58, 2));
+                if (castling[3] && (squares[59] + squares[58] + squares[57] == 0)) {
+                    if (CheckSquare(58) && CheckSquare(59)) moves.Add(new Move(myKing, 58, 2));
                 }
             }
         }
-    }
-
-    //returns true if square is safe
-    bool CheckSquare(int sq) {
-        return !BitboardContains(enemyAttackBitmap, sq);
     }
 
     void GetPawnMoves() {
-        int offset = (turnColour == whiteColourIndex) ? 8 : -8;
-        //{ 8, -8, -1, 1, 7, 9, -9, -7 };
-        int[] diagnols = (turnColour == whiteColourIndex) ? new int[] { 6, 7 } : new int[] { 4, 5 };
-        int[] diagnolOffset = (turnColour == whiteColourIndex) ? new int[] { 7, 9 } : new int[] { -9, -7, };
-        List<int> pawnList = board.pawns[turnColour];
-        for (int i = 0; i < pawnList.Count; i++) {
-            int pawnSquare = pawnList[i];
-            bool doubleMove = distances[pawnSquare][enemyColour] == 1;
-            bool promotionMove = distances[pawnSquare][turnColour] == 1;
-            int moveTo = pawnSquare + offset;
+        int pawnOffset = offset[turnColour]; 
+        int[] diagnols = (turnColour == 0) ? new int[] { 6, 7 } : new int[] { 4, 5 };
+        int[] diagnolOffset = (turnColour == 0) ? new int[] { 4, 5 } : new int[] { 6, 7, };
+        PieceList pawnPieces = board.pawnsList[turnColour];
+        for (int i = 0; i < pawnPieces.length; i++) {
+            int startSq = pawnPieces.pieces[i];
+            bool IsDoubleMove = distances[startSq][enemyColour] == 1;
+            bool promotionMove = distances[startSq][turnColour] == 1;
+            int endSq = startSq + pawnOffset;
+
+
             //if sqare empty
-            if (squares[moveTo] == 0) {
+            if (squares[endSq] == 0) {
                 //if not pinned or is moving in pin
-                if (!pinExists || (!pinnedPieces.ContainsKey(pawnSquare) || pinnedPieces[pawnSquare].Contains(moveTo))) {
+                if (!IsPinned(startSq) || IsMovingAlongRay(startSq, turnColour)) {                
+                    //if (!pinExists || (!pinnedPieces.ContainsKey(pawnSquare) || pinnedPieces[pawnSquare].Contains(moveTo))) {
                     //if not in check or is moving to stop check
-                    if (!inCheck || InCheckMap(moveTo)) {
+                    if (!inCheck || InCheckMap(endSq)) {
                         if (promotionMove) {
-                            moves.Add(new Move(pawnSquare, moveTo, 4));
-                            moves.Add(new Move(pawnSquare, moveTo, 5));
-                            moves.Add(new Move(pawnSquare, moveTo, 6));
-                            moves.Add(new Move(pawnSquare, moveTo, 7));
+                            moves.Add(new Move(startSq, endSq, 4));
+                            moves.Add(new Move(startSq, endSq, 5));
+                            moves.Add(new Move(startSq, endSq, 6));
+                            moves.Add(new Move(startSq, endSq, 7));
                         } else {
-                            moves.Add(new Move(pawnSquare, moveTo));
+                            moves.Add(new Move(startSq, endSq));
                         }
                     }
                     //if can move double and sq empty
-                    if (doubleMove && squares[moveTo + offset] == 0) {
+                    if (IsDoubleMove && squares[endSq + pawnOffset] == 0) {
                         //recheck check, no need to recheck pin
-                        if (!inCheck || InCheckMap(moveTo + offset)) {
-                            moves.Add(new Move(pawnSquare, moveTo + offset, Move.Flag.PawnDoubleMove));
+                        if (!inCheck || InCheckMap(endSq + pawnOffset)) {
+                            moves.Add(new Move(startSq, endSq + pawnOffset, Move.Flag.PawnDoubleMove));
                         }
                     }
                 }
             }
             //check pawn captures
             for (int d = 0; d < 2; d++) {
-                moveTo = pawnSquare + diagnolOffset[d];
-                if (distances[pawnSquare][diagnols[d]] > 0) {
+                endSq = startSq + offset[diagnolOffset[d]];
+                if (distances[startSq][diagnols[d]] > 0) {
                     //recheck pins
-                    if (!pinnedPieces.ContainsKey(pawnSquare) || pinnedPieces[pawnSquare].Contains(moveTo)) {
+                    if (!IsPinned(startSq) || IsMovingAlongRay(startSq, diagnolOffset[d])) {
+                        //if (!pinnedPieces.ContainsKey(pawnSquare) || pinnedPieces[pawnSquare].Contains(moveTo)) {
                         //recheck check
-                        int eset = (turnColour == whiteColourIndex) ? -8 : 8;
+                        int eset = (turnColour == 0) ? -8 : 8;
                         if (BitboardContains(checkBitmap, board.Enpassant + eset)) {
                             //Enpass capture
-                            if (moveTo == board.Enpassant && ValidateEnpassant(pawnSquare, moveTo)) {
-                                moves.Add(new Move(pawnSquare, moveTo, Move.Flag.EnPassantCapture));
+                            if (endSq == board.Enpassant && ValidateEnpassant(startSq, endSq)) {
+                                moves.Add(new Move(startSq, endSq, Move.Flag.EnPassantCapture));
                             }
                         }
-                        if (!inCheck || InCheckMap(moveTo)) {
+                        if (!inCheck || InCheckMap(endSq)) {
                             //Enpass capture
-                            if (board.Enpassant != 0 && moveTo == board.Enpassant && ValidateEnpassant(pawnSquare, moveTo)) {
-                                moves.Add(new Move(pawnSquare, moveTo, Move.Flag.EnPassantCapture));
+                            if (board.Enpassant != 0 && endSq == board.Enpassant && ValidateEnpassant(startSq, endSq)) {
+                                moves.Add(new Move(startSq, endSq, Move.Flag.EnPassantCapture));
                             }
                             //regular capture
-                            if (squares[moveTo] != 0 && Piece.Colour(squares[moveTo]) != turnColour) {
+                            if (squares[endSq] != 0 && Piece.Colour(squares[endSq]) != turnColour) {
                                 if (promotionMove) {
-                                    moves.Add(new Move(pawnSquare, moveTo, 4));
-                                    moves.Add(new Move(pawnSquare, moveTo, 5));
-                                    moves.Add(new Move(pawnSquare, moveTo, 6));
-                                    moves.Add(new Move(pawnSquare, moveTo, 7));
+                                    moves.Add(new Move(startSq, endSq, 4));
+                                    moves.Add(new Move(startSq, endSq, 5));
+                                    moves.Add(new Move(startSq, endSq, 6));
+                                    moves.Add(new Move(startSq, endSq, 7));
                                 } else {
-                                    moves.Add(new Move(pawnSquare, moveTo));
+                                    moves.Add(new Move(startSq, endSq));
                                 }
                             }
                         }
                     }
                 }
             }
+
         }
     }
-
-    //check Enpassant capture is actualy legal
     bool ValidateEnpassant(int moveFrom, int moveTo) {
         int Enpassant = board.Enpassant;
         int EnPawnSquare = (Enpassant >= 16 && Enpassant <= 23) ? Enpassant + 8 : Enpassant - 8;
@@ -186,6 +310,7 @@ public class MoveGenerator {
         copy[moveFrom] = 0;
         //test if move puts player in check
         int sq = board.kings[turnColour];
+        int enemyPieceCol = (enemyColour == 0) ? Piece.White : Piece.Black;
         int enemyRook = enemyPieceCol | Piece.Rook;
         int enemyBishop = enemyPieceCol | Piece.Bishop;
         int enemyQueen = enemyPieceCol | Piece.Queen;
@@ -213,198 +338,79 @@ public class MoveGenerator {
         }
         return true;
     }
+
     void GetKnightMoves() {
-        List<int> KnightM = board.knights[turnColour];
-        for (int i = 0; i < KnightM.Count; i++) {
-            int knight = KnightM[i];
-            if (IsPinned(knight)) {
-                continue;
-            }
-
-            for (int kn = 0; kn < knightMoves[knight].Length; kn++) {
-                int to = knightMoves[knight][kn];
-                if (!inCheck || InCheckMap(to)) {
-                    if (squares[to] == 0 || Piece.Colour(squares[to]) != turnColour) {
-                        moves.Add(new Move(knight, to));
-                    }
+        PieceList KnightM = board.knightsList[turnColour];
+        for (int i = 0; i < KnightM.length; i++) {
+            int knight = KnightM.pieces[i];
+            if (IsPinned(knight)) continue;
+            ulong nMoves = knightAttackBitboards[KnightM[i]];
+            nMoves &= ~turnPieces;
+            if (inCheck) nMoves &= checkBitmap;
+            for (int move = 0; move < knightMoves[knight].Length; move++) {
+                if (BitboardContains(nMoves, knightMoves[knight][move])) {
+                    moves.Add(new Move(knight, knightMoves[knight][move]));
                 }
             }
-
-
-
         }
     }
-    //get sliding piece moves
     void RookBishopQueen() {
-        List<int> RookM = board.rooks[turnColour];
-        List<int> BishopM = board.bishops[turnColour];
-        List<int> QueenM = board.queens[turnColour];
-
-        foreach (int sq in RookM) Slide(sq, 0, 4);
-        foreach (int sq in BishopM) Slide(sq, 4, 8);
-        foreach (int sq in QueenM) Slide(sq, 0, 8);
+        //if (inDoubleCheck) return;
+        PieceList RookM = board.rooksList[turnColour];
+        PieceList BishopM = board.bishopsList[turnColour];
+        PieceList QueenM = board.queensList[turnColour];
+        for (int i = 0; i < RookM.length; i++) GetSlideMoves(RookM.pieces[i], 0, 4);
+        for (int i = 0; i < BishopM.length; i++) GetSlideMoves(BishopM.pieces[i], 4, 8);
+        for (int i = 0; i < QueenM.length; i++) GetSlideMoves(QueenM.pieces[i], 0, 8);
     }
-    //get attacks for sliding pieces
-    void Slide(int sq, int start, int end) {
-        if (inCheck && pinnedPieces.ContainsKey(sq)) {
-            return;
-        }
+    void GetSlideMoves(int startSq, int start, int end) {
+        for (int dir = start; dir < end; dir++) {
+            for (int i = 1; i < distances[startSq][dir] + 1; i++) {
+                int moveTo = startSq + (offset[dir] * i);
 
-
-        for (int d = start; d < end; d++) {
-            for (int i = 1; i < distances[sq][d] + 1; i++) {
-                int moveTo = sq + (offset[d] * i);
-                //if blocked by friendly, stop searching in this direction
-                if (squares[moveTo] != 0 && Piece.Colour(squares[moveTo]) == turnColour) {
+                //piece exists
+                if (squares[moveTo] != 0) {
+                    //if piece is a enemy piece
+                    if (Piece.Colour(squares[moveTo]) != turnColour) {
+                        //if not in check or this move removes check
+                        if (!inCheck || InCheckMap(moveTo)) {
+                            //if not in pinned or moving along pin
+                            if (!IsPinned(startSq) || IsMovingAlongRay(startSq, dir)) {
+                                moves.Add(new Move(startSq, moveTo));
+                            }
+                        }
+                    }
                     break;
-                }
-                //if is pinned and move is not in pin
-                if (pinnedPieces.ContainsKey(sq) && !pinnedPieces[sq].Contains(moveTo)) {
-                    continue;
-                }
-                //if in check and this move dosnt remove check
-                if (inCheck && !InCheckMap(moveTo)) {
-                    continue;
-                }
-                //square empty
-                if (squares[moveTo] == 0) {
-                    moves.Add(new Move(sq, moveTo));
-                    continue;
                 } else {
-                    //if not empty is blocked by enemy blocked by enemy
-                    moves.Add(new Move(sq, moveTo));
-                    break;
-
-                }
-            }
-        }
-
-    }
-
-    void GenAttackBitboards() {
-        checkBitmap = 0;
-        GenBitboardSlide();
-        GenBitboardPins();
-        GenBitboardKnight();
-        GenBitboardPawn();
-        enemyAttackBitmapNoPawns = SlidingAttackBitmap | KnightAttackBitmap | kingAttackBitboards[board.kings[enemyColour]];
-        enemyAttackBitmap = enemyAttackBitmapNoPawns | PawnAttackBitmap;
-    }
-
-    void GenBitboardPins() {
-        pinBitboard = new ulong[8];
-        int enemyRook = enemyPieceCol | Piece.Rook;
-        int enemyBishop = enemyPieceCol | Piece.Bishop;
-        int enemyQueen = enemyPieceCol | Piece.Queen;
-        for (int d = 0; d < 8; d++) {
-            List<int> pinTemp = new List<int>();
-            int pinnedPos = 0;
-            ulong tempBitmap = 0;
-            int friendCount = 0;
-            bool dangerPiece = false;
-
-            for (int i = 1; i < distances[myKing][d] + 1; i++) {
-                int newSquare = myKing + (offset[d] * i);
-                if (squares[newSquare] == 0) {
-                    pinTemp.Add(newSquare);
-                    tempBitmap |= 1ul << newSquare;
-                    continue;
-                }
-                if (Piece.Colour(squares[newSquare]) == turnColour) {
-                    friendCount++;
-                    pinnedPos = newSquare;
-                    if (friendCount > 1) {
-                        break;
-                    }
-                } else {
-                    int enemyPiece = squares[newSquare];
-                    if ((d <= 3) && enemyPiece == enemyRook || (d >= 4) && enemyPiece == enemyBishop || enemyPiece == enemyQueen) {
-                        pinTemp.Add(newSquare);
-                        tempBitmap |= 1ul << newSquare;
-                        dangerPiece = true;
-                    }
-                    break;
-                }
-            }
-            if (dangerPiece && friendCount == 0) {
-                checkBitmap |= tempBitmap;
-                inDoubleCheck = inCheck;
-                inCheck = true;
-            }
-            if (dangerPiece && friendCount == 1) {
-                pinExists = true;
-                pinnedPieces.Add(pinnedPos, pinTemp);
-            }
-            if (inDoubleCheck) {
-                break;
-            }
-        }
-    }
-
-    void GenBitboardPawn() {
-        List<int> PawnM = board.pawns[enemyColour];
-        PawnAttackBitmap = 0;
-        for (int i = 0; i < PawnM.Count; i++) {
-            PawnAttackBitmap |= pawnAttackBitboards[PawnM[i]][enemyColour];
-            if (BitboardContains(pawnAttackBitboards[PawnM[i]][enemyColour], myKing)) {
-                inDoubleCheck = inCheck;
-                inCheck = true;
-                checkBitmap |= 1ul << PawnM[i];
-            }
-        }
-    }
-
-    void GenBitboardKnight() {
-        List<int> KnightM = board.knights[enemyColour];
-        KnightAttackBitmap = 0;
-        for (int i = 0; i < KnightM.Count; i++) {
-            KnightAttackBitmap |= knightAttackBitboards[KnightM[i]];
-            if (BitboardContains(knightAttackBitboards[KnightM[i]], myKing)) {
-                inDoubleCheck = inCheck;
-                inCheck = true;
-                checkBitmap |= 1ul << KnightM[i];
-            }
-        }
-    }
-
-    void GenBitboardSlide() {
-        SlidingAttackBitmap = 0;
-        List<int> RookM = board.rooks[enemyColour];
-        List<int> BishopM = board.bishops[enemyColour];
-        List<int> QueenM = board.queens[enemyColour];
-        foreach (int sq in RookM) SlideAttacks(sq, 0, 4);
-        foreach (int sq in BishopM) SlideAttacks(sq, 4, 8);
-        foreach (int sq in QueenM) SlideAttacks(sq, 0, 8);
-    }
-
-    void SlideAttacks(int sq, int start, int end) {
-        for (int d = start; d < end; d++) {
-            for (int i = 1; i < distances[sq][d] + 1; i++) {
-                int moveTo = sq + (offset[d] * i);
-                SlidingAttackBitmap |= 1ul << moveTo;
-                if (moveTo != myKing) {
-                    if (board.squares[moveTo] != 0) {
-                        break;
+                    //if not in check or this move removes check
+                    if (!inCheck || InCheckMap(moveTo)) {
+                        //if not in pinned or moving along pin
+                        if (!IsPinned(startSq) || IsMovingAlongRay(startSq, dir)) {
+                            // if (!pinnedPieces.ContainsKey(startSq) || pinnedPieces[startSq].Contains(moveTo)) {
+                            moves.Add(new Move(startSq, moveTo));
+                        }
                     }
                 }
             }
         }
     }
 
+    bool CheckSquare(int sq) {
+        return !BitboardContains(enemyAttackBitmap, sq);
+    }
+    bool IsMovingAlongRay(int square, int dir) {
+        ulong ray = rays[square][dir] | rays[square][inverse[dir]];
+        ulong kingInRay = board.kingsBoard[turnColour] & ray;
+        return kingInRay != 0;
+    }
     bool IsPinned(int square) {
-        return pinExists && pinnedPieces.ContainsKey(square);
+        return pinExists && ((pinBitboard >> square) & 1) != 0;
     }
-
     bool InCheckMap(int square) {
         return inCheck && ((checkBitmap >> square) & 1) != 0;
     }
     bool BitboardContains(ulong board, int sq) {
         return ((board >> sq) & 1) != 0;
     }
-
-
-
-
-
 
 }

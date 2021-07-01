@@ -19,7 +19,6 @@ public class GameLogic {
     public delegate void OnCheck();
     public OnCheck onCheck;
 
-    
     public GameLogic() {
         instance = this;
     }
@@ -30,7 +29,8 @@ public class GameLogic {
         table = new TranspositionTable(board, 64000);
         Zobrist.FillzProperties();
         AiOn = false;
-        LoadFen(FEN.FenArray[2]);
+        //LoadFen(FEN.FenArray[1]);
+        LoadFen(FEN.twoMil);
     }
 
     public void LoadFen(string i) {
@@ -48,54 +48,34 @@ public class GameLogic {
             artificialPlayer.TakeTurn();
         }
     }
+
     public void EndTurn() {
         if(show) gameDisplay.RefreshDisplay(board);
         onTurnEnd?.Invoke();
         StartTurn();
+    }
+
+    public void Tests() {
+        //Perft.MoveTester(FEN.FenArray[2], 4);
+        //Perft.MoveTestSplit(FEN.twoMil, 5);
+        //Perft.MoveTester(FEN.startFen, 5);
+        Perft.MoveTester(4);
+        //Perft.RunTests();
+    }
+    public void ToggleAi() {
+        AiOn = AiOn ? false : true;
+    }
+    public bool MyTurn() {
+        return playerColour == board.turnColour;
+    }
+    public int GetTeam() {
+        return playerColour;
     }
     public void Check() {
         onCheck?.Invoke();
     }
     public void Checkmate() {
         onCheck?.Invoke();
-    }
-
-
-    public void Tests() {
-        //Perft.MoveTester(FEN.startFen, 4);
-        //Perft.MoveTester2(FEN.startFen, 4);
-
-        //Perft.MoveTester(FEN.FenArray[0], 3);
-        //Perft.MoveTester2(FEN.FenArray[0], 4);
-        //Perft.MoveTester(FEN.FenArray[3], 2);
-        //Perft.MoveTester2(FEN.FenArray[3], 3);
-        Perft.MoveTestSplit(FEN.FenArray[2], 5);
-
-
-        //Perft.MoveTester(FEN.FenArray[2], 2);
-        //Perft.MoveTester(FEN.FenArray[2], 3);
-        //Perft.MoveTester(FEN.FenArray[2], 4);
-        //Perft.MoveTester2(FEN.FenArray[2], 4);
-        //Perft.MoveTester2(FEN.FenArray[2], 1);
-
-
-        //Perft.MoveTester("rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8", 4);
-        //LoadFen("8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1");
-        //Perft.RunTests();
-
-    }
-
-
-    public void ToggleAi() {
-        AiOn = AiOn ? false : true;
-    }
-
-    public bool MyTurn() {
-        return playerColour == board.turnColour;
-    }
-
-    public int GetTeam() {
-        return playerColour;
     }
 
     public void ChangeTeam() {
@@ -131,7 +111,6 @@ public class GameLogic {
         log.Append(GetBoardRep(squares[from]));
         return log.ToString();
     }
-
     public string GetBoardRep(int sq) {
         int rank = (sq / 8) + 1;
         int t = sq % 8;

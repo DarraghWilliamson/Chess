@@ -3,28 +3,30 @@ using System.Collections.Generic;
 
 public static class PreComputedMoves {
 
-    
+
     public static readonly int[][] distances;
+    public static readonly int[] offset = new int[] { 8, -8, -1, 1,   7, 9, -9, -7 };
     static readonly int[] knightOffsets = new int[] { 15, 17, -17, -15, -10, 6, -6, 10 };
-    public static readonly int[] offset = new int[] { 8, -8, -1, 1, 7, 9, -9, -7 };
+    public static readonly int[] inverse = new int[]{ 1, 0, 3, 2,   7, 6, 5, 4};
     public static readonly int[][] pawnAttackOffsets = { new int[] { 4, 6 }, new int[] { 7, 5 } };
+    public static readonly ulong[][] rays;
 
     public static readonly int[][] pawnAttackWhite;
     public static readonly int[][] pawnAttackBlack;
+    public static readonly byte[][] knightMoves;
+    public static readonly byte[][] kingMoves;
+
     public static readonly ulong[][] pawnAttackBitboards;
     public static readonly ulong[] kingAttackBitboards;
     public static readonly ulong[] knightAttackBitboards;
-    
-    public static readonly byte[][] knightMoves;
-    public static readonly byte[][] kingMoves;
     public static readonly ulong[] rookMoves;
     public static readonly ulong[] bishopMoves;
     public static readonly ulong[] queenMoves;
-
+    
     
 
     static PreComputedMoves() {
-
+         
         pawnAttackWhite = new int[64][];
         pawnAttackBlack = new int[64][];
         distances = new int[64][];
@@ -37,9 +39,12 @@ public static class PreComputedMoves {
         knightAttackBitboards = new ulong[64];
         kingAttackBitboards = new ulong[64];
         pawnAttackBitboards = new ulong[64][];
+
+        rays = new ulong[64][];
         
         for (int sq = 0; sq < 64; sq++) {
             GetDistances(sq);
+            CalculateRays(sq);
             GetKnightMoves(sq);
             GetKingMoves(sq);
             PawnAttacks(sq);
@@ -67,6 +72,19 @@ public static class PreComputedMoves {
         distances[sq][5] = Math.Min(north, west);
         distances[sq][6] = Math.Min(south, east);
         distances[sq][7] = Math.Min(south, west);
+    }
+
+    static void CalculateRays(int sq) { 
+        ulong[] raysq = new ulong[8];
+        for(int dir = 0; dir < 8; dir++) {
+            ulong ray = 0;
+            for (int dist= 1;dist< distances[sq][dir]+1; dist++) {
+                ray |= 1ul <<  sq + (offset[dir] * dist) ;
+            }
+            raysq[dir] = ray;
+        }
+        rays[sq] = raysq;
+
     }
 
     static void GetKnightMoves(int sq) {

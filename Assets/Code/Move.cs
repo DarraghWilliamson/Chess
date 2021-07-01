@@ -71,14 +71,11 @@ public struct GameState {
     public int Enpassant { get { return enpa; } }
     private int cap;
     public int CapturedPiece { get { return cap; } }
-    private List<int>[] li;
-    public List<int>[] Lists { get { return li; } }
 
-    public GameState(int[] c, bool[] cas,int enpa, int cap, List<int>[]li) {
+    public GameState(int[] c, bool[] cas,int enpa, int cap) {
         this.sq = c;
         this.cas = cas;
         this.enpa = enpa;
         this.cap = cap;
-        this.li = li;
     }
 }

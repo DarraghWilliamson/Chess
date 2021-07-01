@@ -82,14 +82,14 @@ public class GameDisplay {
 
         //cycle through piece onjects, place piece down where thers a piece on the board
         //if no place is found kill the piece
-        List<int>[] allLists = board.allLists;
+        PieceList[] allLists = board.allLists;
         for (int objList = 0; objList < allLists.Length; objList++) {
-            for (int obj = 0; obj < allLists[objList].Count; obj++) {
+            for (int obj = 0; obj < allLists[objList].length; obj++) {
 
 
 
                 PieceObject piece = allPieces[objList][obj].GetComponent<PieceObject>();
-                int ind = allLists[objList][obj];
+                int ind = allLists[objList].pieces[obj];
                 piece.SetTile(tiles[ind]);
                 tiles[ind].SetPiece(piece);
                 piece.gameObject.SetActive(true);
@@ -129,7 +129,7 @@ public class GameDisplay {
         for (int i = 0; i < 64; i++) {
             tiles[i].piece = null;
         }
-        List<int>[] allLists = board.allLists;
+        PieceList[] allLists = board.allLists;
         for (int objList = 0; objList < allPieces.Length; objList++) {
             for (int obj = 0; obj < allPieces[objList].Count; obj++) {
                 allPieces[objList][obj].SetActive(false);
