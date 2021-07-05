@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Runtime.CompilerServices;
 using UnityEngine;
+using static Utils;
 
 public class Tile : MonoBehaviour {
     Material moveMat, selectMat, blockedMat, takeMat;
@@ -10,6 +11,10 @@ public class Tile : MonoBehaviour {
     public PieceObject piece;
     public GameDisplay gameDisplay;
     public GameLogic gameLogic;
+
+    public bool promotion = false;
+    public int assignedMove;
+
     readonly Dictionary<int, string> dictString = new Dictionary<int, string>() {
         [Piece.Pawn] = "Pawn",
         [Piece.Bishop] = "Bishop",
@@ -38,33 +43,27 @@ public class Tile : MonoBehaviour {
     }
 
     public void OnMouseDown() {
-
-        if (showingBlocked) return;
-        //if takable refer to piece
-        if (showingTakeable) {
-            piece.OnMouseDown();
+        if(piece == null || piece.colour != gameLogic.board.turnColour) {
+            Debug.Log(this);
         }
-        //if moveable fine the move
-        if (showingMoveable) {
-            List<Move> posibilities = new List<Move>();
-            foreach(Move move in gameLogic.possableMoves) {
-                if(move.StartSquare == gameDisplay.SelectedPeice.tile.num) {
-                    if(move.EndSquare == num) {
-                        posibilities.Add(move);
-                    }
-                }
+        //if theres a move assigned, do that
+        if (assignedMove != 0) {
+            gameLogic.board.MovePiece(assignedMove);
+        } else {
+            if (piece != null) {
+                piece.OnMouseDown();
+                return;
+            } else {
+                gameDisplay.Unselect();
             }
-            if (posibilities.Count != 1) print("mult");
-            gameLogic.board.MovePiece(posibilities[0]);
+        }
+        //if theres a piece, refer to the piece logic
+        if (piece != null) {
+            piece.OnMouseDown();
             return;
         }
-        //if no piece/move, log
-        if (piece == null) {
-            gameDisplay.Unselect();
-            Debug.Log(this);
-        } else {
-            Debug.Log(this);
-        }
+        //else log tile
+        Debug.Log(this);
     }
 
     public void SetPiece(PieceObject piece) {
@@ -95,6 +94,8 @@ public class Tile : MonoBehaviour {
     }
 
     public void Hide() {
+        assignedMove = 0;
+        if (piece != null) piece.assignedMove = 0;
         GetComponent<Renderer>().material = selectMat;
         GetComponent<Renderer>().enabled = false;
         showingMoveable = false;
@@ -102,9 +103,7 @@ public class Tile : MonoBehaviour {
         showingTakeable = false;
     }
     public void ShowTakeable() {
-        if (piece != null) {
-            piece.InDanger();
-        }
+        piece.InDanger();
         GetComponent<Renderer>().material = takeMat;
         GetComponent<Renderer>().enabled = true;
         showingTakeable = true;

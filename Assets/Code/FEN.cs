@@ -1,21 +1,19 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Text;
-using System;
-using System.IO;
+﻿using System.Collections.Generic;
 using UnityEngine;
 
 public static class FEN {
     public readonly static string startFen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1";
     public readonly static string Kiwipete = "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq -";
     public readonly static string twoMil = "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8";
+
     public readonly static string[] FenArray = new string[] {
         "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2P3/2N2Q1p/PPPBBPPP/R3K2R w KQkq - 0 0",
         "8/2p5/3p4/KP5r/1R3p1k/8/4P1P1/8 w - - 0 1",
         "rnbq1k1r/pp1Pbppp/2p5/8/2B5/8/PPP1NnPP/RNBQK2R w KQ - 1 8",
-        "rnR2k1r/pp2bppp/1qp5/8/2B2N2/8/PPP2nPP/RNBQK2R b KQ - 0 0"
+        "r3k2r/p1ppqpb1/bn2pnp1/3PN3/1p2PQ2/2N2B2/PPPB1PpP/R3K2R b KQkq - 0 0"
     };
-    readonly static Dictionary<char, int> dictInt = new Dictionary<char, int>() {
+
+    private static readonly Dictionary<char, int> dictInt = new Dictionary<char, int>() {
         ['p'] = Piece.Pawn,
         ['b'] = Piece.Bishop,
         ['n'] = Piece.Knight,
@@ -48,21 +46,20 @@ public static class FEN {
             }
         }
         turn = split[1][0] == 'w' ? 0 : 1;
+        int castle = 0;
         foreach (char ch in split[2]) {
             if (ch == '-') continue;
-            if (ch == 'K') Castling[0] = true;
-            if (ch == 'Q') Castling[1] = true;
-            if (ch == 'k') Castling[2] = true;
-            if (ch == 'q') Castling[3] = true;
+            if (ch == 'K') castle |= 1;
+            if (ch == 'Q') castle |= 2;
+            if (ch == 'k') castle |= 4;
+            if (ch == 'q') castle |= 8;
         }
         if (split[3][0] != '-') {
-            int temp1 = ((int)char.ToUpper(split[3][0])) - 65;
-            int temp2 = (((int)char.GetNumericValue(split[3][1])) * 8) - 8;
-            Enpassant = (temp1 + temp2);
+            Enpassant = ((int)char.ToUpper(split[3][0])) - 64;
         }
         half = 0;
         full = 0;
-        if(split.Length > 4) {
+        if (split.Length > 4) {
             if (split[4] != "") {
                 half = int.Parse(split[4]);
                 if (split.Length >= 6) {
@@ -70,8 +67,11 @@ public static class FEN {
                 }
             }
         }
-        return new LoadInfo { castling = Castling, squares = origin, enpassant = Enpassant, turnColour = turn, turnCount = full };
+
+        int state = ((Enpassant << 4) + castle);
+        return new LoadInfo { squares = origin, state = state, turnColour = turn, turnCount = full };
     }
+
     public static void ExportFen(Board board) {
         string FEN = "";
         int[] squares = board.squares;
@@ -112,18 +112,21 @@ public static class FEN {
         FEN += board.turnColour == 0 ? " w " : " b ";
         //castling
         string castling = "";
-        castling += board.Castling[0] ? "K" : "";
-        castling += board.Castling[1] ? "Q" : "";
-        castling += board.Castling[2] ? "k" : "";
-        castling += board.Castling[3] ? "q" : "";
+        int castle = board.currentGameState & 15;
+        castling += ((castle >> 0) & 1) != 0 ? "K" : "";
+        castling += ((castle >> 1) & 1) != 0 ? "Q" : "";
+        castling += ((castle >> 2) & 1) != 0 ? "k" : "";
+        castling += ((castle >> 3) & 1) != 0 ? "q" : "";
         if (castling == "") {
             FEN += "- ";
         } else {
             FEN += castling + " ";
         }
         //Enpassant
-        if (board.Enpassant != 99) {
-            FEN += GetBoardRep(board.Enpassant) + " ";
+        int e = ((board.currentGameState >> 4) & 15);
+        if (e != 0) {
+            int add = board.turnColour == 1 ? 15 : 39;
+            FEN += GetBoardRep(e + add) + " ";
         } else {
             FEN += "- ";
         }
@@ -133,12 +136,11 @@ public static class FEN {
         Debug.Log(FEN);
     }
 
-    static string GetBoardRep(int sq) {
+    private static string GetBoardRep(int sq) {
         int rank = (sq / 8) + 1;
         int t = sq % 8;
         char file = (char)(t + 65);
         string s = char.ToLower(file) + "" + rank;
         return s;
     }
-
 }

@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using static Utils;
 public class GameDisplay {
 
     public static GameDisplay instance;
@@ -15,6 +16,9 @@ public class GameDisplay {
     public GameObject[] kings;
     public List<GameObject>[] pawns, knights, rooks, bishops, queens, allPieces;
     public List<GameObject> Pieces, PromotionBlack, PromotionWhite;
+
+    public bool showingPromotionOptions;
+    public GameObject promotingPawn;
 
     public GameDisplay() {
         instance = this;
@@ -31,14 +35,12 @@ public class GameDisplay {
         [Piece.Queen] = "Queen"
     };
 
-    public void AddNewPiece(Move m) {
-        int type = 0;
-        int square = m.EndSquare;
-        switch (m.MoveFlag) {
-            case Move.Flag.PromotionQueen: type = Piece.Queen; break;
-            case Move.Flag.PromotionBishop: type = Piece.Bishop; break;
-            case Move.Flag.PromotionRook: type = Piece.Rook; break;
-            case Move.Flag.PromotionKnight: type = Piece.Knight; break;
+    public void AddNewPiece(int square, int type) {
+        switch (type) { // 0:Knight, 1:bishop, 2:rook, 3:queen
+            case 3: type = Piece.Queen; break;
+            case 1: type = Piece.Bishop; break;
+            case 2: type = Piece.Rook; break;
+            case 0: type = Piece.Knight; break;
         }
         int col = GameLogic.instance.board.turnColour;
         string colour = col == 0 ? "White" : "Black";
@@ -63,6 +65,18 @@ public class GameDisplay {
             case Piece.Queen: queens[col].Add(piece); break;
 
         }
+    }
+
+    public void WasPromotion() {
+        promotingPawn.gameObject.SetActive(false);
+        foreach(GameObject g  in PromotionBlack) {
+            g.SetActive(false);
+        }
+        foreach (GameObject g in PromotionWhite) {
+            g.SetActive(false);
+        }
+        showingPromotionOptions = false;
+        promotingPawn = null;
     }
 
     //probbaly better ways of doing this 
@@ -98,31 +112,6 @@ public class GameDisplay {
 
             }
         }
-
-
-        /*
-            for (int objList = 0; objList < allPieces.Length; objList++) {
-            for (int obj = 0; obj < allPieces[objList].Count; obj++) {
-                PieceObject piece = allPieces[objList][obj].GetComponent<PieceObject>();
-                try {
-                    allPieces[objList][obj].SetActive(true);
-                    int sq = allLists[objList][obj];
-                    piece.SetTile(tiles[sq]);
-                    tiles[sq].SetPiece(piece);
-                    piece.gameObject.SetActive(true);
-                    allPieces[objList][obj].transform.position = tiles[sq].transform.position;
-                } catch (System.ArgumentOutOfRangeException) {
-                    piece.Die();
-                    piece.gameObject.SetActive(false);
-                    continue;
-                }
-
-            }
-
-
-
-        }
-            */
     }
 
     void Clear(Board board) {
@@ -135,8 +124,40 @@ public class GameDisplay {
                 allPieces[objList][obj].SetActive(false);
             }
         }
+    }
 
+    public void ShowMoves(int num) {
+        GameLogic gameLogic = GameLogic.instance;
+        List<int> moves = gameLogic.possableMoves;
+        foreach (int move in moves) {
+            if (GetStartSquare(move) == num) {
+                int end = GetEndSquare(move);
+                bool promotion = false;
+                if(GetMoveType(move) == 3) promotion = true;
+                
+                if (tiles[end].piece != null) {
+                    tiles[end].ShowTakeable();
+                    if (promotion) {
+                        tiles[end].piece.promotion = true;
+                        tiles[end].piece.posibilities.Add(move);
+                    } else {
+                        tiles[end].piece.assignedMove = move;
+                    }
+                    
+                    
+                } else {
+                    tiles[end].ShowMoveable();
+                    if (promotion) {
+                        tiles[end].promotion = true;
+                    } else {
+                        tiles[end].assignedMove = move;
+                    }
+
+                }
+                
             }
+        }
+    }
 
     public void SelectNew(PieceObject peice) {
         if (SelectedPeice != null) {

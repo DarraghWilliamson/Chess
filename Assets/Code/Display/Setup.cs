@@ -1,13 +1,11 @@
-﻿using UnityEngine;
-using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
+using UnityEngine;
 
 public class Setup : MonoBehaviour {
-    GameLogic gameLogic = new GameLogic();
-    GameDisplay gameDisplay = new GameDisplay();
-    
+    private GameLogic gameLogic = new GameLogic();
+    private GameDisplay gameDisplay = new GameDisplay();
 
-    readonly Dictionary<int, string> dictString = new Dictionary<int, string>() {
+    private readonly Dictionary<int, string> dictString = new Dictionary<int, string>() {
         [Piece.Pawn] = "Pawn",
         [Piece.Bishop] = "Bishop",
         [Piece.Knight] = "Knight",
@@ -15,14 +13,14 @@ public class Setup : MonoBehaviour {
         [Piece.King] = "King",
         [Piece.Queen] = "Queen"
     };
-    
-    void Start() {
+
+    private void Start() {
         gameLogic.gameDisplay = gameDisplay;
         gameDisplay.tiles = SetUpTiles();
         PlacePieces();
-        gameLogic.Start(FEN.FenArray[2]);
+        gameLogic.Start();
     }
-    
+
     public Tile[] SetUpTiles() {
         GameObject Tiles = new GameObject("Tiles");
         Tile[] tiles = new Tile[64];
@@ -37,24 +35,35 @@ public class Setup : MonoBehaviour {
                 tile.GetComponent<Tile>().gameLogic = gameLogic;
                 tile.transform.position = pos;
                 pos.z -= 20;
-                tile.name = abc[i2] + (i+1);
+                tile.name = abc[i2] + (i + 1);
                 tiles[t] = tile.GetComponent<Tile>();
                 tiles[t].num = t;
                 t++;
             }
             pos.z = 70;
             pos.x += 20;
-            
         }
-        
+
         return tiles;
     }
 
     public void PlacePieces() {
         Tile[] tiles = GameDisplay.instance.tiles;
-        int[] defultPieces = new int[] { 14,11,13,15,9, 14, 11, 13, 10,10,10,10,10,10,10,10,18,18,18,18,18,18,18,18,22,19,21, 22, 19, 21, 17,23};
-        int[] promotionPieces = new int[] {14,11,13,15};
-        int[] promorionCords = new int[] {30,10,-10,-30 };
+        int[] defultPieces = new int[] {
+            14, 14, 14, 14, 14, 14, 14, 14,
+            11,11,11,11,11,11,
+            13,13, 13, 13, 13, 13,
+            15,15,15,15,15,15,
+            10,10,10,10,10,10,10,10,
+            18,18,18,18,18,18,18,18,
+            22,22, 22,22,22,22,22,22,
+            19,19,19,19,19,19,19,19,
+            21, 21,21, 21,21, 21,21, 21,
+            23,23,23,23,23,23,23,23,
+            17,9,
+        };
+        int[] promotionPieces = new int[] { 14, 11, 13, 15 };
+        int[] promorionCords = new int[] { 30, 10, -10, -30 };
 
         GameObject[] kings = new GameObject[2];
         List<GameObject>[] pawns = { new List<GameObject>(), new List<GameObject>() };
@@ -63,8 +72,6 @@ public class Setup : MonoBehaviour {
         List<GameObject>[] bishops = { new List<GameObject>(), new List<GameObject>() };
         List<GameObject>[] queens = { new List<GameObject>(), new List<GameObject>() };
         List<GameObject>[] all = { pawns[0], knights[0], rooks[0], bishops[0], queens[0], pawns[1], knights[1], rooks[1], bishops[1], queens[1] };
-       
-
 
         GameObject PromoWhite = new GameObject("PromotionWhite");
         GameObject PromoBlack = new GameObject("PromotionBlack");
@@ -72,8 +79,9 @@ public class Setup : MonoBehaviour {
         List<GameObject> PromotionBlack = new List<GameObject>();
         for (int p = 0; p < promotionPieces.Length; p++) {
             GameObject pieceW = Instantiate(Resources.Load<GameObject>("Peices/Promotion/" + dictString[Piece.Type(promotionPieces[p])] + "White"), PromoWhite.transform);
-            pieceW.transform.position =  new Vector3(110, 0, promorionCords[p]);
+            pieceW.transform.position = new Vector3(110, 0, promorionCords[p]);
             pieceW.GetComponent<PieceObject>().gameLogic = gameLogic;
+            pieceW.GetComponent<PieceObject>().gameDisplay = gameDisplay;
             pieceW.GetComponent<PieceObject>().isPromotionPiece = true;
             PromotionWhite.Add(pieceW);
             pieceW.SetActive(false);
@@ -83,17 +91,17 @@ public class Setup : MonoBehaviour {
             pieceB.GetComponent<PieceObject>().isPromotionPiece = true;
             PromotionBlack.Add(pieceB);
             pieceB.GetComponent<PieceObject>().gameLogic = gameLogic;
+            pieceB.GetComponent<PieceObject>().gameDisplay = gameDisplay;
             pieceB.SetActive(false);
         }
-        
-        
+
         GameObject White = new GameObject("White");
         GameObject Black = new GameObject("Black");
         for (int i = 0; i < defultPieces.Length; i++) {
             if (defultPieces[i] != '\0' && defultPieces[i] != 'e') {
                 string colour;
                 GameObject parent;
-                if(Piece.IsColour(defultPieces[i],Piece.White)) {
+                if (Piece.IsColour(defultPieces[i], Piece.White)) {
                     colour = "White";
                     parent = White;
                 } else {
@@ -113,13 +121,12 @@ public class Setup : MonoBehaviour {
 
                 int col = colour == "White" ? 0 : 1;
                 switch (Piece.Type(defultPieces[i])) {
-                    case Piece.King: kings[col] =  piece;break;
+                    case Piece.King: kings[col] = piece; break;
                     case Piece.Pawn: pawns[col].Add(piece); break;
                     case Piece.Knight: knights[col].Add(piece); break;
                     case Piece.Rook: rooks[col].Add(piece); break;
                     case Piece.Bishop: bishops[col].Add(piece); break;
                     case Piece.Queen: queens[col].Add(piece); break;
-
                 }
             }
         }
@@ -139,7 +146,4 @@ public class Setup : MonoBehaviour {
         temp.SetActive(false);
         GameDisplay.instance.Enp = temp;
     }
-
-    
-
 }

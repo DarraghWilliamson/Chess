@@ -14,7 +14,7 @@ public class ArtificialPlayer {
 
     public void TakeTurn() {
         //Dictionary<int, List<int>> moves = gameLogic.possableMoves;
-        List<Move> moves = gameLogic.board.GenerateMoves();
+        List<int> moves = gameLogic.board.GenerateMoves();
         if (moves.Count==0) {
             Console.Write("AI has no moves");
             return;
@@ -22,7 +22,7 @@ public class ArtificialPlayer {
         MoveRandom(moves);
     }
     
-    public void MoveRandom(List<Move> moves) {
+    public void MoveRandom(List<int> moves) {
         int a = rand.Next(moves.Count);
         gameLogic.board.MovePiece(moves[a]);
     }

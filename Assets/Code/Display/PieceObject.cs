@@ -3,7 +3,7 @@ using System.Runtime;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-
+using static Utils;
 public class PieceObject : MonoBehaviour {
 
     public bool inDanger, selected, isPromotionPiece;
@@ -14,36 +14,29 @@ public class PieceObject : MonoBehaviour {
     public Tile[] tiles;
     public GameDisplay gameDisplay;
     public GameLogic gameLogic;
-
+    public List<int> posibilities = new List<int>();
     public bool promotion = false;
-    public Move ForceMove;
+    public int assignedMove;
 
     public void OnMouseDown() {
-        if (!gameLogic.MyTurn()) return;
-        if (promotion) {
-            GameDisplay.instance.AddNewPiece(ForceMove);
-            gameLogic.board.MovePiece(ForceMove);
+        if (isPromotionPiece) {
+            gameLogic.board.MovePiece(assignedMove);
+            gameDisplay.WasPromotion();
             return;
         }
-        if ((gameLogic.playerColour != colour) && inDanger) {
-            List<Move> posibilities = new List<Move>();
-            foreach (Move move in gameLogic.possableMoves) {
-                if (move.StartSquare == gameDisplay.SelectedPeice.tile.num) {
-                    if (move.EndSquare == tile.num) {
-                        posibilities.Add(move);
-                    }
-                }
-            }
-            if (posibilities.Count != 1) {
-                SelectPromote(posibilities);
-                return;
-            } else {
-                Move m = posibilities[0];
-                gameLogic.board.MovePiece(m);
-                return;
-            }
+
+        if (!gameLogic.MyTurn()) {
+            return;
         }
-        if (!selected && (gameLogic.playerColour == colour) && !isPromotionPiece) {
+        if(gameDisplay.SelectedPeice != null && (assignedMove != 0 || promotion)) {
+            if (promotion) {
+                SelectPromote();
+                return;
+            }
+            gameLogic.board.MovePiece(assignedMove);
+            return;
+        }
+        if (!selected && (gameLogic.playerColour == colour)) {
             selected = true;
             gameDisplay.SelectNew(this);
         }
@@ -53,22 +46,19 @@ public class PieceObject : MonoBehaviour {
         this.tile = tile;
     }
 
-    void SelectPromote(List<Move> posibilities) {
+    void SelectPromote() {
         List<GameObject> con;
-        if(gameLogic.board.turnColour == 0) {
-            con = gameDisplay.PromotionWhite;
-        } else {
-            con = gameDisplay.PromotionBlack;
-        }
-        for(int i = 0; i<con.Count;i++) {
-            con[i].SetActive(true);
-        }
-        foreach(Move m in posibilities) {
-            switch (m.MoveFlag) {
-                case Move.Flag.PromotionQueen: con[3].GetComponent<PieceObject>().ForceMove = m; con[3].GetComponent<PieceObject>().promotion = true; break;
-                case Move.Flag.PromotionBishop:con[2].GetComponent<PieceObject>().ForceMove = m; con[2].GetComponent<PieceObject>().promotion = true; break;
-                case Move.Flag.PromotionRook: con[0].GetComponent<PieceObject>().ForceMove = m; con[0].GetComponent<PieceObject>().promotion = true; break;
-                case Move.Flag.PromotionKnight: con[1].GetComponent<PieceObject>().ForceMove = m; con[1].GetComponent<PieceObject>().promotion = true; break;
+        con = gameLogic.board.turnColour == 0 ? gameDisplay.PromotionWhite : gameDisplay.PromotionBlack;
+        for(int i = 0; i<con.Count;i++) con[i].SetActive(true);
+        gameDisplay.showingPromotionOptions = true;
+        gameDisplay.promotingPawn = this.gameObject;
+
+        foreach(ushort m in posibilities) {
+            switch (GetPromotionType(m)) { // 0:Knight, 1:bishop, 2:rook, 3:queen
+                case 3: con[3].GetComponent<PieceObject>().assignedMove = m; con[3].GetComponent<PieceObject>().isPromotionPiece = true; break;
+                case 1:con[2].GetComponent<PieceObject>().assignedMove = m; con[2].GetComponent<PieceObject>().isPromotionPiece = true; break;
+                case 2: con[0].GetComponent<PieceObject>().assignedMove = m; con[0].GetComponent<PieceObject>().isPromotionPiece = true; break;
+                case 0: con[1].GetComponent<PieceObject>().assignedMove = m; con[1].GetComponent<PieceObject>().isPromotionPiece = true; break;
             }
         }
     }
@@ -79,7 +69,7 @@ public class PieceObject : MonoBehaviour {
 
     void OnMouseOver() {
         if (inDanger) return;
-        if (gameLogic == null) Debug.Log("asd");
+        if (gameLogic == null)
         if (gameLogic.playerColour != colour) return;
         GetComponent<Renderer>().material = greenOutline;
     }
@@ -93,48 +83,14 @@ public class PieceObject : MonoBehaviour {
         selected = true;
         transform.position = transform.position + new Vector3(0, 5, 0);
         GetComponent<Renderer>().material = greenOutline;
-        ShowMoves();
+        gameDisplay.ShowMoves(tile.num);
     }
 
-    string CheckTile(int i) {
-        int t = gameLogic.board.squares[i];
-        if (t==0) {
-            return "move";
-        } else {
-            if (Piece.IsColour(gameLogic.board.squares[i], Piece.White) != (colour == 1)) {
-                return "block";
-            } else {
-                return "take";
-            }
-        }
-    }
-
-    void ShowMoves() {
-        List<Move> moves = gameLogic.possableMoves;
-        foreach(Move move in moves) {
-            if (move.StartSquare == tile.num) {
-                int end = move.EndSquare;
-                if (Piece.Type(gameLogic.board.squares[move.StartSquare]) == Piece.Pawn) {
-                    if((move.EndSquare-move.StartSquare)%8 != 0) {
-                        tiles[end].ShowTakeable();
-                        continue;
-                    }
-                }
-                if (CheckTile(end) == "move") tiles[end].ShowMoveable();
-                if (CheckTile(end) == "take") tiles[end].ShowTakeable();
-                if (CheckTile(end) == "block") tiles[end].ShowBlocked();
-            }
-        }
-    }
+    
 
     public void Unselect() {
         tile.Hide();
-        List<GameObject> con;
-        if (gameLogic.board.turnColour == 0) {
-            con = gameDisplay.PromotionWhite;
-        } else {
-            con = gameDisplay.PromotionBlack;
-        }
+        List<GameObject> con = gameLogic.board.turnColour == 0 ? gameDisplay.PromotionWhite : gameDisplay.PromotionBlack;
         foreach (GameObject g in con) g.SetActive(false);
         
         selected = false;

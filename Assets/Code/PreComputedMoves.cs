@@ -2,12 +2,10 @@
 using System.Collections.Generic;
 
 public static class PreComputedMoves {
-
-
     public static readonly int[][] distances;
-    public static readonly int[] offset = new int[] { 8, -8, -1, 1,   7, 9, -9, -7 };
-    static readonly int[] knightOffsets = new int[] { 15, 17, -17, -15, -10, 6, -6, 10 };
-    public static readonly int[] inverse = new int[]{ 1, 0, 3, 2,   7, 6, 5, 4};
+    public static readonly int[] offset = new int[] { 8, -8, -1, 1, 7, 9, -9, -7 };
+    private static readonly int[] knightOffsets = new int[] { 15, 17, -17, -15, -10, 6, -6, 10 };
+    public static readonly int[] inverse = new int[] { 1, 0, 3, 2, 7, 6, 5, 4 };
     public static readonly int[][] pawnAttackOffsets = { new int[] { 4, 6 }, new int[] { 7, 5 } };
     public static readonly ulong[][] rays;
 
@@ -22,11 +20,8 @@ public static class PreComputedMoves {
     public static readonly ulong[] rookMoves;
     public static readonly ulong[] bishopMoves;
     public static readonly ulong[] queenMoves;
-    
-    
 
     static PreComputedMoves() {
-         
         pawnAttackWhite = new int[64][];
         pawnAttackBlack = new int[64][];
         distances = new int[64][];
@@ -41,7 +36,7 @@ public static class PreComputedMoves {
         pawnAttackBitboards = new ulong[64][];
 
         rays = new ulong[64][];
-        
+
         for (int sq = 0; sq < 64; sq++) {
             GetDistances(sq);
             CalculateRays(sq);
@@ -52,11 +47,10 @@ public static class PreComputedMoves {
             BishopMoves(sq);
             QueenMoves(sq);
         }
-    
     }
 
     //north, south, east, west, north east, north west, south east, south west
-    static void GetDistances(int sq) {
+    private static void GetDistances(int sq) {
         int file = sq / 8;
         int rank = (sq + 8) % 8;
         int north = 7 - file;
@@ -74,20 +68,19 @@ public static class PreComputedMoves {
         distances[sq][7] = Math.Min(south, west);
     }
 
-    static void CalculateRays(int sq) { 
+    private static void CalculateRays(int sq) {
         ulong[] raysq = new ulong[8];
-        for(int dir = 0; dir < 8; dir++) {
+        for (int dir = 0; dir < 8; dir++) {
             ulong ray = 0;
-            for (int dist= 1;dist< distances[sq][dir]+1; dist++) {
-                ray |= 1ul <<  sq + (offset[dir] * dist) ;
+            for (int dist = 1; dist < distances[sq][dir] + 1; dist++) {
+                ray |= 1ul << sq + (offset[dir] * dist);
             }
             raysq[dir] = ray;
         }
         rays[sq] = raysq;
-
     }
 
-    static void GetKnightMoves(int sq) {
+    private static void GetKnightMoves(int sq) {
         //probably better ways of doing this
         int[] c1 = new int[] { 0, 0, 1, 1, 2, 2, 3, 3 };
         int[] c2 = new int[] { 2, 3, 2, 3, 1, 0, 1, 0 };
@@ -104,7 +97,7 @@ public static class PreComputedMoves {
         knightAttackBitboards[sq] = knightBitboard;
     }
 
-    static void GetKingMoves(int sq) {
+    private static void GetKingMoves(int sq) {
         var legalMoves = new List<byte>();
         for (int d = 0; d < 8; d++) {
             if (distances[sq][d] >= 1) {
@@ -115,12 +108,12 @@ public static class PreComputedMoves {
         }
         kingMoves[sq] = legalMoves.ToArray();
     }
-    
-    static void PawnAttacks(int sq) {
+
+    private static void PawnAttacks(int sq) {
         List<int> legalAttackWhite = new List<int>();
         List<int> legalAttackBlack = new List<int>();
         pawnAttackBitboards[sq] = new ulong[2];
-        for(int c = 4; c < 6; c++) {
+        for (int c = 4; c < 6; c++) {
             if (distances[sq][c] > 0) {
                 legalAttackWhite.Add(sq + offset[c]);
                 pawnAttackBitboards[sq][0] |= 1ul << sq + offset[c];
@@ -128,15 +121,15 @@ public static class PreComputedMoves {
         }
         for (int c = 6; c < 8; c++) {
             if (distances[sq][c] > 0) {
-                legalAttackBlack.Add(sq+offset[c]);
-                pawnAttackBitboards[sq][1] |= 1ul << sq+offset[c];
+                legalAttackBlack.Add(sq + offset[c]);
+                pawnAttackBitboards[sq][1] |= 1ul << sq + offset[c];
             }
         }
         pawnAttackBlack[sq] = legalAttackBlack.ToArray();
         pawnAttackWhite[sq] = legalAttackWhite.ToArray();
     }
 
-    static void RookMoves(int sq) {
+    private static void RookMoves(int sq) {
         for (int d = 0; d < 4; d++) {
             for (int n = 0; n < distances[sq][d]; n++) {
                 int legalMove = sq + d * (n + 1);
@@ -144,7 +137,8 @@ public static class PreComputedMoves {
             }
         }
     }
-    static void BishopMoves(int sq) {
+
+    private static void BishopMoves(int sq) {
         for (int d = 4; d < 8; d++) {
             for (int n = 0; n < distances[sq][d]; n++) {
                 int legalMove = sq + d * (n + 1);
@@ -152,9 +146,8 @@ public static class PreComputedMoves {
             }
         }
     }
-    static void QueenMoves(int sq) {
+
+    private static void QueenMoves(int sq) {
         queenMoves[sq] = rookMoves[sq] | bishopMoves[sq];
     }
-
-
 }

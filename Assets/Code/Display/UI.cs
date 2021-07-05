@@ -29,6 +29,9 @@ public class UI : MonoBehaviour {
         if (gamelogic.checkmate) { check.text = "Checkmate."; return; }
     }
 
+    public void Restart() {
+        gamelogic.Start();
+    }
     public void TEST() {
         List<int> sq = GameLogic.instance.board.bitmatSquares;
         foreach(int i in sq) {
