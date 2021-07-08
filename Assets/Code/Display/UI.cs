@@ -1,13 +1,12 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using UnityEngine;
+﻿using System.Collections.Generic;
 using TMPro;
+using UnityEngine;
 
 public class UI : MonoBehaviour {
     public TMP_Text team, turn, check, emp;
-    GameLogic gamelogic;
+    private GameLogic gamelogic;
 
-    void Start() {
+    private void Start() {
         gamelogic = GameLogic.instance;
         gamelogic.onTurnEnd += UpdateUI;
         gamelogic.onCheck += UpdateCheck;
@@ -32,15 +31,18 @@ public class UI : MonoBehaviour {
     public void Restart() {
         gamelogic.Start();
     }
-    public void TEST() {
+
+    public void ShowTiles() {
         List<int> sq = GameLogic.instance.board.bitmatSquares;
-        foreach(int i in sq) {
+        foreach (int i in sq) {
             GameDisplay.instance.tiles[i].ShowMoveable();
         }
     }
+
     public void Fen() {
         FEN.ExportFen(GameLogic.instance.board);
     }
+
     public void Tests() {
         GameLogic.instance.Tests();
     }
@@ -53,9 +55,9 @@ public class UI : MonoBehaviour {
         gamelogic.board.TurnSkip();
         UpdateUI();
     }
+
     public void TeamChange() {
         gamelogic.ChangeTeam();
         UpdateUI();
     }
 }
-

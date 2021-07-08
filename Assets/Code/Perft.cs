@@ -20,7 +20,7 @@ public static class Perft {
             depths = new List<(int, int)>();
         }
     }
-    
+
     private static string PromotionString(int move) {
         if (GetMoveType(move) == 3) {
             if (GetPromotionType(move) == 0) return "n";
@@ -138,6 +138,7 @@ public static class Perft {
         UnityEngine.Debug.Log(total + " total moves" + " in " + watch.ElapsedMilliseconds + " ms\n" + sb.ToString());
         watch.Stop();
     }
+
     private static uint Split2(int depth, int move, Board board) {
         if (depth == 0) return 1;
         uint numPos = 0;
@@ -159,7 +160,6 @@ public static class Perft {
         return numPos;
     }
 
-    
     public static void MoveTestSplitind(int depth) {
         gameLogic = GameLogic.instance;
         gameLogic.show = false;
@@ -170,9 +170,9 @@ public static class Perft {
         var watch = Stopwatch.StartNew();
         List<int> allMoves = gameLogic.board.GenerateMoves();
         //for (int i = 0; i < allMoves.Count; i++) {
-            for (int i = 36; i < 38; i++) {
-                //UnityEngine.Debug.Log(i + " " + PrintMoveRep(allMoves[i]));
-                nodes = Split2ind(depth, allMoves[i], gameLogic.board,i);
+        for (int i = 36; i < 38; i++) {
+            //UnityEngine.Debug.Log(i + " " + PrintMoveRep(allMoves[i]));
+            nodes = Split2ind(depth, allMoves[i], gameLogic.board, i);
             total += nodes;
             sb.Append(GetBoardRep(GetStartSquare(allMoves[i])));
             sb.Append(GetBoardRep(GetEndSquare(allMoves[i])));
@@ -181,11 +181,12 @@ public static class Perft {
         UnityEngine.Debug.Log(total + " total moves" + " in " + watch.ElapsedMilliseconds + " ms\n" + sb.ToString());
         watch.Stop();
     }
+
     private static uint Split2ind(int depth, int move, Board board, int x) {
         if (depth == 0) return 1;
         uint numPos = 0;
         board.MovePiece(move);
-        numPos += Split3ind(depth - 1, x==37);
+        numPos += Split3ind(depth - 1, x == 37);
         board.CtrlZ(move);
         return numPos;
     }
@@ -196,16 +197,14 @@ public static class Perft {
         List<int> allMoves = gameLogic.board.GenerateMoves();
         uint numPos = 0;
         foreach (int m in allMoves) {
-            if(b)s += PrintMoveRep(m)+"\n";
+            if (b) s += PrintMoveRep(m) + "\n";
             gameLogic.board.MovePiece(m);
-            numPos += Split3ind(depth - 1,b);
+            numPos += Split3ind(depth - 1, b);
             gameLogic.board.CtrlZ(m);
         }
-        if(s!="")UnityEngine.Debug.Log(s);
+        if (s != "") UnityEngine.Debug.Log(s);
         return numPos;
     }
-
-
 
     public static void MoveTester(int depth) {
         gameLogic = GameLogic.instance;

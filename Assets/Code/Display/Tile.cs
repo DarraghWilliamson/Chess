@@ -1,11 +1,8 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Runtime.CompilerServices;
+﻿using System.Collections.Generic;
 using UnityEngine;
-using static Utils;
 
 public class Tile : MonoBehaviour {
-    Material moveMat, selectMat, blockedMat, takeMat;
+    private Material moveMat, selectMat, blockedMat, takeMat;
     public bool showingMoveable, showingBlocked, showingTakeable;
     public int num;
     public PieceObject piece;
@@ -15,7 +12,7 @@ public class Tile : MonoBehaviour {
     public bool promotion = false;
     public int assignedMove;
 
-    readonly Dictionary<int, string> dictString = new Dictionary<int, string>() {
+    private readonly Dictionary<int, string> dictString = new Dictionary<int, string>() {
         [Piece.Pawn] = "Pawn",
         [Piece.Bishop] = "Bishop",
         [Piece.Knight] = "Knight",
@@ -30,9 +27,9 @@ public class Tile : MonoBehaviour {
         blockedMat = Resources.Load<Material>("Materials/Block");
         takeMat = Resources.Load<Material>("Materials/Take");
     }
-    
+
     public override string ToString() {
-        string r = this.name +" " + this.num;
+        string r = this.name + " " + this.num;
         int p = gameLogic.board.squares[num];
         r = r + " - " + gameLogic.board.squares[num];
         if (p != 0) {
@@ -43,7 +40,7 @@ public class Tile : MonoBehaviour {
     }
 
     public void OnMouseDown() {
-        if(piece == null || piece.colour != gameLogic.board.turnColour) {
+        if (piece == null || piece.colour != gameLogic.board.turnColour) {
             Debug.Log(this);
         }
         //if theres a move assigned, do that
@@ -70,21 +67,23 @@ public class Tile : MonoBehaviour {
         this.piece = piece;
     }
 
-    void OnMouseOver() {
+    private void OnMouseOver() {
         GetComponent<Renderer>().enabled = true;
     }
 
-    void OnMouseExit() {
+    private void OnMouseExit() {
         if (!showingMoveable && !showingBlocked && !showingTakeable) {
             GetComponent<Renderer>().enabled = false;
         }
     }
+
     public void ShowBlocked() {
         GetComponent<Renderer>().material = blockedMat;
         GetComponent<Renderer>().enabled = true;
         showingBlocked = true;
         gameDisplay.activatedTiles.Add(this);
     }
+
     public void ShowMoveable() {
         if (this.piece != null) ShowTakeable();
         GetComponent<Renderer>().material = moveMat;
@@ -102,6 +101,7 @@ public class Tile : MonoBehaviour {
         showingBlocked = false;
         showingTakeable = false;
     }
+
     public void ShowTakeable() {
         piece.InDanger();
         GetComponent<Renderer>().material = takeMat;
@@ -109,5 +109,4 @@ public class Tile : MonoBehaviour {
         showingTakeable = true;
         gameDisplay.activatedTiles.Add(this);
     }
-
 }

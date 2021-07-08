@@ -1,7 +1,6 @@
-﻿public static class Zobrist {
-    private static int seed = 2846602;
-    private static System.Random random = new System.Random(seed);
+﻿using static Random;
 
+public static class Zobrist {
     public static ulong[,,] zPieces = new ulong[2, 8, 64];
     public static ulong[] zEnpassant = new ulong[9];
     public static ulong[] zCastling = new ulong[16];
@@ -11,17 +10,17 @@
         for (int col = 0; col < 2; col++) {
             for (int type = 0; type < 8; type++) {
                 for (int squares = 0; squares < 64; squares++) {
-                    zPieces[col, type, squares] = MakeRandom64Bit();
+                    zPieces[col, type, squares] = GetRandom64();
                 }
             }
         }
         for (int Enp = 0; Enp < 9; Enp++) {
-            zEnpassant[Enp] = MakeRandom64Bit();
+            zEnpassant[Enp] = GetRandom64();
         }
         for (int cast = 0; cast < 16; cast++) {
-            zCastling[cast] = MakeRandom64Bit();
+            zCastling[cast] = GetRandom64();
         }
-        zTurnColour = MakeRandom64Bit();
+        zTurnColour = GetRandom64();
     }
 
     public static ulong GetZobristHash(Board board) {
@@ -48,11 +47,5 @@
         }
 
         return zKey;
-    }
-
-    public static ulong MakeRandom64Bit() {
-        byte[] bytes = new byte[8];
-        random.NextBytes(bytes);
-        return System.BitConverter.ToUInt64(bytes, 0);
     }
 }

@@ -16,7 +16,7 @@ public static class Utils {
         return (((type << 12) + (from << 6) + to));
     }
 
-    public static int CreateMoveShort(int from, int to) {
+    public static int CreateMove(int from, int to) {
         return (((from << 6) + to));
     }
 
@@ -50,8 +50,94 @@ public static class Utils {
         return ((board >> bit) & 1) != 0;
     }
 
-    public static bool CanCastle(int castleShort, int pos) {
-        return ((castleShort >> pos) & 1) != 0;
+    public static bool HasOneBit(ulong board) {
+        return (board != 0 && (board & (board - 1)) == 0);
+    }
+
+    public static int CountBits(ulong board) {
+        //Brian Kernighan's method of counting bits in a bitboard
+        int count = 0;
+        while (board != 0) {
+            count++;
+            board &= board - 1;
+        }
+        return count;
+    }
+
+    //returns the index of the least significant bit in ulong
+    public static int LsfbIndex(ulong board) {
+        if (board == 0) return -1;
+        return CountBits((board ^ board - 1) - 1);
+    }
+
+    //pop least significant bit
+    public static int PopLsBit(ulong map) {
+        if (map == 0) return -1;
+        int i = CountBits((map ^ map - 1) - 1);
+        RemoveBit(map, i);
+        return i;
+    }
+
+    public static ulong RemoveBit(ulong map, int index) {
+        return (map ^= (1ul << index));
+    }
+
+    public static ulong AddBit(ulong map, int index) {
+        return (map |= (1ul << index));
+    }
+
+    public static int GetRank(int sq) {
+        return (sq / 8) + 1;
+    }
+
+    public static int GetFile(int sq) {
+        return sq % 8;
+    }
+
+    public static string PrintMove(int move) {
+        string s = GetStartSquare(move) + " " + GetEndSquare(move);
+        s += " " + GetMoveType(move) + " " + GetPromotionType(move);
+
+        return (s);
+    }
+
+    public static string BitboardToString(ulong bitboard) {
+        return BoardArrayToString(BitboardToArray(bitboard));
+    }
+
+    public static int[] BitboardToArray(ulong bitboard) {
+        int[] arr = new int[64];
+        for (int i = 0; i < 64; i++) {
+            if ((bitboard >> i & 1) != 0) {
+                arr[i] = 1;
+            }
+        }
+        return arr;
+    }
+
+    public static string BoardArrayToString(int[] board) {
+        int sq;
+        string s = "";
+        for (int file = 8; file > 0; file--) {
+            for (int rank = 0; rank < 8; rank++) {
+                sq = (file * 8 - 8) + rank;
+                s += board[sq] == 1 ? "1" : "0";
+            }
+            s += "\n";
+        }
+        return s;
+    }
+
+    public static string PrintMoveRep(int move) {
+        return (GetBoardRep(GetStartSquare(move)) + "" + GetBoardRep(GetEndSquare(move)));
+    }
+
+    public static string GetBoardRep(int sq) {
+        int rank = (sq / 8) + 1;
+        int t = sq % 8;
+        char file = (char)(t + 65);
+        string s = char.ToLower(file) + "" + rank;
+        return s;
     }
 
     //logs moves to conosle
@@ -84,33 +170,6 @@ public static class Utils {
         log.Append(GetBoardRep(squares[from]));
         return log.ToString();
     }
-
-    public static int GetRank(int sq) {
-        return (sq / 8) + 1;
-    }
-
-    public static int GetFile(int sq) {
-        return sq % 8;
-    }
-
-    public static string PrintMove(int move) {
-        string s = GetStartSquare(move) + " " + GetEndSquare(move);
-        s += " " + GetMoveType(move) + " " + GetPromotionType(move);
-
-        return (s);
-    }
-
-    public static string PrintMoveRep(int move) {
-        return (GetBoardRep(GetStartSquare(move)) + "" + GetBoardRep(GetEndSquare(move)));
-    }
-
-    public static string GetBoardRep(int sq) {
-        int rank = (sq / 8) + 1;
-        int t = sq % 8;
-        char file = (char)(t + 65);
-        string s = char.ToLower(file) + "" + rank;
-        return s;
-    }
 }
 
 public struct LoadInfo {
@@ -118,19 +177,4 @@ public struct LoadInfo {
     public int state;
     public int turnColour;
     public int turnCount;
-}
-
-public struct GameState {
-    private bool[] cas;
-    public bool[] Castling { get { return cas; } }
-    private int enpa;
-    public int Enpassant { get { return enpa; } }
-    private int cap;
-    public int CapturedPiece { get { return cap; } }
-
-    public GameState(bool[] cas, int enpa, int cap) {
-        this.cas = cas;
-        this.enpa = enpa;
-        this.cap = cap;
-    }
 }

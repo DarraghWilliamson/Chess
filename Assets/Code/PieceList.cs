@@ -1,7 +1,4 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-
-public class PieceList{
+﻿public class PieceList {
     public int[] pieces;
     public int[] map;
     public int length;
@@ -16,7 +13,7 @@ public class PieceList{
         map[ind] = length;
         pieces[length] = ind;
         length++;
-    }  
+    }
 
     public void Remove(int ind) {
         length--;  //reduce pieces in list
@@ -33,12 +30,12 @@ public class PieceList{
         int moveing = map[from];
         pieces[moveing] = to;
         map[to] = moveing;
-
-
     }
 
-
-    public int this[int index] => pieces[index];
-
-
+    //public int this[int index] => pieces[index];
+    public int this[int index] {
+        get {
+            return pieces[index];
+        }
+    }
 }

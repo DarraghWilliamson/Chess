@@ -10,11 +10,10 @@ public class MoveGenerator {
     private int turnColour, enemyColour;
     private int myKing;
     private int[] squares;
-    private int castling, enpass;
+    private int castling, EnpassantFile;
     private bool inCheck, inDoubleCheck, pinExists;
     private const ulong debruijn64 = (0x03f79d71b4cb0a89);
 
-    //const ulong deBruijn64 = 0x03f79d71b4cb0a89UL;
     public static readonly byte[] index64 = {
          0, 47,  1, 56, 48, 27,  2, 60,
          57, 49, 41, 37, 28, 16,  3, 61,
@@ -27,7 +26,7 @@ public class MoveGenerator {
     };
 
     private ulong slidingAttackBitmap, knightAttackBitmap, pawnAttackBitmap, enemyAttackBitmapNoPawns,
-        enemyAttackBitmap, checkBitmap, turnPieces, enemyPieces, pinBitboard;
+        enemyAttackBitmap, checkBitmap, turnPieces, enemyPieces, pinBitboard, allPieces;
 
     public List<int> GenerateMoves(Board board) {
         shortMoves = new List<int>();
@@ -35,7 +34,7 @@ public class MoveGenerator {
         inCheck = false;
         inDoubleCheck = false;
         pinExists = false;
-        enpass = ((board.currentGameState >> 4) & 15);
+        EnpassantFile = ((board.currentGameState >> 4) & 15);
         castling = board.currentGameState & 15;
         turnColour = board.turnColour;
         squares = board.squares;
@@ -50,17 +49,70 @@ public class MoveGenerator {
     }
 
     private void GenerateBitboards() {
+        pinBitboard = 0;
         enemyPieces = 0;
         turnPieces = 0;
         checkBitmap = 0;
+        allPieces = 0;
+        slidingAttackBitmap = 0;
         enemyPieces = board.pawnsBoard[enemyColour] | board.knightsBoard[enemyColour] | board.bishopsBoard[enemyColour] | board.rooksBoard[enemyColour] | board.queensBoard[enemyColour] | board.kingsBoard[enemyColour];
         turnPieces = board.pawnsBoard[turnColour] | board.knightsBoard[turnColour] | board.bishopsBoard[turnColour] | board.rooksBoard[turnColour] | board.queensBoard[turnColour] | board.kingsBoard[turnColour];
-
-        GenBitboardSlide();
-        GenBitboardKnight();
-        GenBitboardPawn();
+        allPieces = enemyPieces | turnPieces;
+        GenChecksAndPins();
+        GetSlideAttack();
+        GetKnightAttack();
+        GetPawnAttack();
         enemyAttackBitmapNoPawns = slidingAttackBitmap | knightAttackBitmap | kingAttackBitboards[board.kings[enemyColour]];
         enemyAttackBitmap = enemyAttackBitmapNoPawns | pawnAttackBitmap;
+
+        board.bitmatSquares.Clear();
+        for (int i = 0; i < 64; i++) {
+            if (BitExists(slidingAttackBitmap, i)) {
+                board.bitmatSquares.Add(i);
+            }
+        }
+    }
+
+    private void GenChecksAndPins() {
+        GetChecksAndPins(0, 4, (board.queensBoard[enemyColour] | board.rooksBoard[enemyColour]));
+        GetChecksAndPins(4, 8, (board.queensBoard[enemyColour] | board.bishopsBoard[enemyColour]));
+    }
+
+    private void GetChecksAndPins(int start, int end, ulong enemyBoard) {
+        //look for enemy
+        for (int dir = start; dir < end; dir++) {
+            ulong kingRay = rays[myKing][dir];
+            //if enemy in direction
+            ulong sliders = kingRay & enemyBoard;
+            if (sliders != 0) {
+                int slidersCount = CountBits(sliders);
+                for (int s = 0; s < slidersCount; s++) {
+                    int sliderPos = LsfbIndex(sliders);
+                    sliders = RemoveBit(sliders, sliderPos);
+                    ulong ray = kingRay & rays[sliderPos][inverse[dir]];
+                    //if ray blocked by enemy piece continue
+                    if ((ray & enemyPieces) != 0) {
+                        continue;
+                    }
+                    if ((ray & turnPieces) != 0) {
+                        //if blocked by single friendly piece
+                        if (CountBits(ray & turnPieces) == 1) {
+                            pinExists = true;
+                            ray |= 1ul << sliderPos;
+                            pinBitboard |= ray;
+                        }
+                        continue;
+                    }
+                    //if not blocked
+                    inDoubleCheck = inCheck;
+                    inCheck = true;
+                    int behindKing = myKing + offset[inverse[dir]];
+                    ray |= 1ul << sliderPos;
+                    slidingAttackBitmap |= 1ul << behindKing;
+                    checkBitmap |= ray;
+                }
+            }
+        }
     }
 
     private void GetMoves() {
@@ -68,84 +120,25 @@ public class MoveGenerator {
         if (inDoubleCheck) return; //if in double check only king moves are valid
         GetPawnMoves();
         GetKnightMoves();
-        RookBishopQueen();
+        GetSlidingMoves();
     }
 
-    private void GenBitboardSlide() {
-        slidingAttackBitmap = 0;
-        pinBitboard = 0;
+    private void GetSlideAttack() {
         PieceList rookPieces = board.rooksList[enemyColour];
         PieceList bishopPieces = board.bishopsList[enemyColour];
         PieceList queenPieces = board.queensList[enemyColour];
-
-        for (int i = 0; i < rookPieces.length; i++) AddToBitboardSlide(rookPieces[i], 0, 4);
-        for (int i = 0; i < bishopPieces.length; i++) AddToBitboardSlide(bishopPieces[i], 4, 8);
-        for (int i = 0; i < queenPieces.length; i++) AddToBitboardSlide(queenPieces[i], 0, 8);
-    }
-
-    //creates slide attack, pin and check pitboards
-    //shoud be re-done later for better efficency
-    private void AddToBitboardSlide(int startSq, int start, int end) {
-        for (int dir = start; dir < end; dir++) {
-            ulong ray = rays[startSq][dir];
-
-            if (ray == 0) continue;
-            if ((ray & board.kingsBoard[turnColour]) != 0) {
-                ulong kingRay = ray & rays[myKing][inverse[dir]];
-                if ((kingRay & enemyPieces) == 0) {
-                    //if no pieces between them, set check
-                    if ((kingRay & turnPieces) == 0) {
-                        inDoubleCheck = inCheck;
-                        inCheck = true;
-                        kingRay |= 1ul << startSq;
-                        checkBitmap |= kingRay;
-                    } else {
-                        //if only a friendly piece, set pin
-                        if (BitScan(kingRay & turnPieces).Length == 1) {
-                            int pin;
-                            if (dir == 0 || dir == 3 || dir == 4 || dir == 5) { //assending index
-                                pin = (int)BitScan(kingRay)[0];
-                            } else { //decending index
-                                byte[] t = BitScan(kingRay);
-                                pin = (int)t[t.Length - 1];
-                            }
-                            ulong pinRay = kingRay & rays[pin][inverse[dir]];
-                            pinExists = true;
-                            kingRay |= 1ul << startSq;
-                            pinRay |= 1ul << startSq;
-                            pinBitboard |= kingRay;
-                            slidingAttackBitmap |= pinRay;
-                            continue;
-                        }
-                    }
-                }
-            }
-            ulong blocks = ray & (turnPieces | enemyPieces);
-            blocks &= ~board.kingsBoard[turnColour];
-            //if no blocks add moves
-            if (blocks == 0) {
-                byte[] path = BitScan(ray);
-                for (int i = 0; i < path.Length; i++) {
-                    slidingAttackBitmap |= 1ul << (int)path[i];
-                }
-                continue;
-            }
-            int block;
-            //if block exists
-            if (dir == 0 || dir == 3 || dir == 4 || dir == 5) { //assending index
-                block = (int)BitScan(blocks)[0];
-            } else { //decending index
-                byte[] t = BitScan(blocks);
-                block = (int)t[t.Length - 1];
-            }
-            //create ray from block to attacker and add moves
-            ulong attackRay = ray & rays[block][inverse[dir]];
-            attackRay |= 1ul << block;
-            slidingAttackBitmap |= attackRay;
+        for (int i = 0; i < rookPieces.length; i++) {
+            slidingAttackBitmap |= GetRookAttacks(rookPieces[i], allPieces);
+        }
+        for (int i = 0; i < bishopPieces.length; i++) {
+            slidingAttackBitmap |= GetBishopAttacks(bishopPieces[i], allPieces);
+        }
+        for (int i = 0; i < queenPieces.length; i++) {
+            slidingAttackBitmap |= (GetRookAttacks(queenPieces[i], allPieces) | GetBishopAttacks(queenPieces[i], allPieces));
         }
     }
 
-    private void GenBitboardKnight() {
+    private void GetKnightAttack() {
         PieceList knightPieces = board.knightsList[enemyColour];
         knightAttackBitmap = 0;
         for (int i = 0; i < knightPieces.length; i++) {
@@ -158,7 +151,7 @@ public class MoveGenerator {
         }
     }
 
-    private void GenBitboardPawn() {
+    private void GetPawnAttack() {
         PieceList pawnPieces = board.pawnsList[enemyColour];
         pawnAttackBitmap = 0;
         for (int i = 0; i < pawnPieces.length; i++) {
@@ -178,35 +171,61 @@ public class MoveGenerator {
         byte[] jumps = BitScan(kingPiece);
         if (kingPiece != 0) {
             for (int i = 0; i < jumps.Length; i++) {
-                shortMoves.Add(CreateMoveShort(myKing, jumps[i]));
+                shortMoves.Add(CreateMove(myKing, jumps[i]));
             }
         }
         if (!inCheck) {
             if (turnColour == 0) {
-                //ushort castle = GetCastling();
-                if (CanCastle(castling, 0) && (squares[5] + squares[6] == 0)) {
+                if (CanCastle(0) && (squares[5] + squares[6] == 0)) {
                     if (CheckSquare(6) && CheckSquare(5)) {
                         shortMoves.Add(CreateMoveShort(myKing, 6, 2));
                     }
                 }
-                if (CanCastle(castling, 1) && (squares[3] + squares[2] + squares[1] == 0)) {
+                if (CanCastle(1) && (squares[3] + squares[2] + squares[1] == 0)) {
                     if (CheckSquare(2) && CheckSquare(3)) {
                         shortMoves.Add(CreateMoveShort(myKing, 2, 2));
                     }
                 }
             } else {
-                if (CanCastle(castling, 2) && (squares[61] + squares[62] == 0)) {
+                if (CanCastle(2) && (squares[61] + squares[62] == 0)) {
                     if (CheckSquare(62) && CheckSquare(61)) {
                         shortMoves.Add(CreateMoveShort(myKing, 62, 2));
                     }
                 }
-                if (CanCastle(castling, 3) && (squares[59] + squares[58] + squares[57] == 0)) {
+                if (CanCastle(3) && (squares[59] + squares[58] + squares[57] == 0)) {
                     if (CheckSquare(58) && CheckSquare(59)) {
                         shortMoves.Add(CreateMoveShort(myKing, 58, 2));
                     }
                 }
             }
         }
+    }
+
+    private bool CanCastle(int pos) {
+        return ((castling >> pos) & 1) != 0;
+    }
+
+    private ulong ShiftBoard(ulong board, int shift) {
+        switch (shift) {
+            case 8: return board << 8;
+            case 16: return board << 16;
+            case 1: return board << 1;
+            case 9: return board << 9;
+            case 7: return board << 7;
+            case -8: return board >> 8;
+            case -16: return board >> 16;
+            case -1: return board >> 1;
+            case -9: return board >> 9;
+            case -7: return board >> 7;
+            default: return board;
+        }
+    }
+
+    private void MakePromotionMoves(int from, int to) {
+        shortMoves.Add(CreatePromotionMoveShort(from, to, 0));
+        shortMoves.Add(CreatePromotionMoveShort(from, to, 1));
+        shortMoves.Add(CreatePromotionMoveShort(from, to, 2));
+        shortMoves.Add(CreatePromotionMoveShort(from, to, 3));
     }
 
     private void GetPawnMoves() {
@@ -234,14 +253,13 @@ public class MoveGenerator {
                             shortMoves.Add(CreatePromotionMoveShort(startSq, endSq, 2));
                             shortMoves.Add(CreatePromotionMoveShort(startSq, endSq, 3));
                         } else {
-                            shortMoves.Add(CreateMoveShort(startSq, endSq));
+                            shortMoves.Add(CreateMove(startSq, endSq));
                         }
                     }
                     //if can move double and sq empty
                     if (IsDoubleMove && squares[endSq + pawnOffset] == 0) {
-                        endSq += pawnOffset;
-                        if (!inCheck || InCheckMap(endSq)) {
-                            shortMoves.Add(CreateMoveShort(startSq, endSq));
+                        if (!inCheck || InCheckMap(endSq + pawnOffset)) {
+                            shortMoves.Add(CreateMove(startSq, endSq + pawnOffset));
                         }
                     }
                 }
@@ -251,8 +269,8 @@ public class MoveGenerator {
                 endSq = startSq + offset[diagnolOffset[d]];
                 if (distances[startSq][diagnols[d]] > 0) {
                     if (!IsPinned(startSq) || IsMovingAlongRay(startSq, diagnolOffset[d])) {
+                        EnpassCapture(startSq, endSq);
                         if (!inCheck || InCheckMap(endSq)) {
-                            EnpassCapture(startSq, endSq);
                             if (squares[endSq] != 0 && Piece.Colour(squares[endSq]) != turnColour) {
                                 if (promotionMove) {
                                     shortMoves.Add(CreatePromotionMoveShort(startSq, endSq, 0));
@@ -260,7 +278,7 @@ public class MoveGenerator {
                                     shortMoves.Add(CreatePromotionMoveShort(startSq, endSq, 2));
                                     shortMoves.Add(CreatePromotionMoveShort(startSq, endSq, 3));
                                 } else {
-                                    shortMoves.Add(CreateMoveShort(startSq, endSq));
+                                    shortMoves.Add(CreateMove(startSq, endSq));
                                 }
                             }
                         }
@@ -271,9 +289,9 @@ public class MoveGenerator {
     }
 
     private void EnpassCapture(int startSq, int endSq) {
-        if (enpass == 0) return;
+        if (EnpassantFile == 0) return;
         if (distances[startSq][turnColour] != 3) return;
-        if (enpass - 1 != (GetFile(endSq))) return;
+        if (EnpassantFile - 1 != (GetFile(endSq))) return;
         if (ValidateEnpassant(startSq)) {
             shortMoves.Add(CreateMoveShort((ushort)startSq, (ushort)endSq, 1));
         }
@@ -284,9 +302,10 @@ public class MoveGenerator {
         int enemyPieceCol = (enemyColour == 0) ? Piece.White : Piece.Black;
         int enemyRook = enemyPieceCol | Piece.Rook;
         int enemyQueen = enemyPieceCol | Piece.Queen;
-        int EnPawnSquare = (turnColour == 0) ? enpass + 31 : enpass + 23;
+        int EnPawnSquare = (turnColour == 0) ? EnpassantFile + 31 : EnpassantFile + 23;
         int from = squares[moveFrom];
         int enp = squares[EnPawnSquare];
+        if (inCheck && !InCheckMap(EnPawnSquare)) return false;
         squares[moveFrom] = 0;
         squares[EnPawnSquare] = 0;
         //test if move reveals a check
@@ -326,50 +345,55 @@ public class MoveGenerator {
             byte[] kM = knightMoves[knight];
             for (int move = 0; move < kM.Length; move++) {
                 if (BitExists(nMoves, kM[move])) {
-                    shortMoves.Add(CreateMoveShort(knight, kM[move]));
+                    shortMoves.Add(CreateMove(knight, kM[move]));
                 }
             }
         }
     }
 
-    private void RookBishopQueen() {
-        //if (inDoubleCheck) return;
+    private void GetSlidingMoves() {
         PieceList RookM = board.rooksList[turnColour];
         PieceList BishopM = board.bishopsList[turnColour];
         PieceList QueenM = board.queensList[turnColour];
-        for (int i = 0; i < RookM.length; i++) GetSlideMoves(RookM.pieces[i], 0, 4);
-        for (int i = 0; i < BishopM.length; i++) GetSlideMoves(BishopM.pieces[i], 4, 8);
-        for (int i = 0; i < QueenM.length; i++) GetSlideMoves(QueenM.pieces[i], 0, 8);
+        for (int i = 0; i < RookM.length; i++) SlideAttackMaps(RookM.pieces[i], Piece.Rook);
+        for (int i = 0; i < BishopM.length; i++) SlideAttackMaps(BishopM.pieces[i], Piece.Bishop);
+        for (int i = 0; i < QueenM.length; i++) SlideAttackMaps(QueenM.pieces[i], Piece.Queen);
     }
 
-    private void GetSlideMoves(int startSq, int start, int end) {
-        for (int dir = start; dir < end; dir++) {
-            for (int i = 1; i < distances[startSq][dir] + 1; i++) {
-                int moveTo = startSq + (offset[dir] * i);
+    private void SlideAttackMaps(int sq, int type) {
+        ulong moveMap = 0;
+        switch (type) {
+            case Piece.Bishop: moveMap = GetBishopAttacks(sq, allPieces); break;
+            case Piece.Rook: moveMap = GetRookAttacks(sq, allPieces); break;
+            case Piece.Queen: moveMap = (GetRookAttacks(sq, allPieces) | GetBishopAttacks(sq, allPieces)); break;
+        }
+        if (IsPinned(sq)) moveMap &= GetPinMovementRay(sq);
+        if (inCheck) moveMap &= checkBitmap;
+        if (moveMap == 0) return;
+        moveMap &= ~turnPieces;
+        int moveCount = CountBits(moveMap);
+        for (int c = 0; c < moveCount; c++) {
+            int moveSq = LsfbIndex(moveMap);
+            moveMap = RemoveBit(moveMap, moveSq);
+            shortMoves.Add(CreateMove(sq, moveSq));
+        }
+    }
 
-                //piece exists
-                if (squares[moveTo] != 0) {
-                    //if piece is a enemy piece
-                    if (Piece.Colour(squares[moveTo]) != turnColour) {
-                        //if not in check or this move removes check
-                        if (!inCheck || InCheckMap(moveTo)) {
-                            //if not in pinned or moving along pin
-                            if (!IsPinned(startSq) || IsMovingAlongRay(startSq, dir)) {
-                                shortMoves.Add(CreateMoveShort((ushort)startSq, (ushort)moveTo));
-                            }
-                        }
-                    }
-                    break;
-                } else {
-                    //if not in check or this move removes check
-                    if (!inCheck || InCheckMap(moveTo)) {
-                        //if not in pinned or moving along pin
-                        if (!IsPinned(startSq) || IsMovingAlongRay(startSq, dir)) {
-                            shortMoves.Add(CreateMoveShort(startSq, moveTo));
-                        }
-                    }
-                }
+    private ulong GetPinMovementRay(int sq) {
+        bool kingFound = false;
+        ulong ray = 0;
+        for (int dir = 0; dir < 8; dir++) {
+            ray = rays[sq][dir];
+            if ((ray & board.kingsBoard[turnColour]) != 0) {
+                ray |= rays[sq][inverse[dir]];
+                kingFound = true;
+                break;
             }
+        }
+        if (kingFound) {
+            return ray;
+        } else {
+            return 0;
         }
     }
 

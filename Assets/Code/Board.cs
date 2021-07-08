@@ -25,10 +25,13 @@ public class Board {
     public int Enpassant, MoveCounter, turnColour, enemyColour, captures, currentGameState;
     public int[] kings, squares;
     public bool inCheck;
-    public ulong[] pawnsBoard, knightsBoard, rooksBoard, bishopsBoard, queensBoard, kingsBoard, bitArray;
+    private ulong[] Bitboards, WhitePieces, BlackPieces, AllPieces;
+
+    public Bitboard pawnsBoard, knightsBoard, rooksBoard, bishopsBoard, queensBoard, kingsBoard;
+    public Bitboard[] allBoards;
     public PieceList[] pawnsList, knightsList, rooksList, bishopsList, queensList, allLists;
     public ulong ZobristKey;
-
+    public Bitboard pwnBoard;
     public List<int> bitmatSquares = new List<int>(); //public for test method
 
     public Board(GameLogic game) {
@@ -36,7 +39,11 @@ public class Board {
     }
 
     public void LoadInfo(string fen) {
-        bitArray = new ulong[64];
+        Bitboards = new ulong[12];
+        WhitePieces = new ulong[64];
+        BlackPieces = new ulong[64];
+        AllPieces = new ulong[64];
+
         squares = new int[64];
         kings = new int[2];
         ZobristKey = 0;
@@ -49,12 +56,13 @@ public class Board {
         bishopsList = new PieceList[] { new PieceList(), new PieceList() };
         queensList = new PieceList[] { new PieceList(), new PieceList() };
         allLists = new PieceList[] { pawnsList[0], knightsList[0], rooksList[0], bishopsList[0], queensList[0], pawnsList[1], knightsList[1], rooksList[1], bishopsList[1], queensList[1] };
-        pawnsBoard = new ulong[] { 0, 0 };
-        knightsBoard = new ulong[] { 0, 0 };
-        rooksBoard = new ulong[] { 0, 0 };
-        bishopsBoard = new ulong[] { 0, 0 };
-        queensBoard = new ulong[] { 0, 0 };
-        kingsBoard = new ulong[] { 0, 0 };
+        pawnsBoard = new Bitboard(new ulong[] { 0ul, 0ul });
+        knightsBoard = new Bitboard(new ulong[] { 0ul, 0ul });
+        rooksBoard = new Bitboard(new ulong[] { 0ul, 0ul });
+        bishopsBoard = new Bitboard(new ulong[] { 0ul, 0ul });
+        queensBoard = new Bitboard(new ulong[] { 0ul, 0ul });
+        kingsBoard = new Bitboard(new ulong[] { 0ul, 0ul });
+        allBoards = new Bitboard[] { pawnsBoard, knightsBoard, rooksBoard, bishopsBoard, queensBoard, kingsBoard };
 
         LoadInfo info = FEN.LoadNewFEN(fen);
         //build bitboards and piecelists
@@ -72,9 +80,6 @@ public class Board {
                     case Piece.King: kings[col] = i; kingsBoard[col] |= 1ul << i; break;
                 }
             }
-            ulong t = 0;
-            t |= 1ul << i;
-            bitArray[i] = t;
         }
         currentGameState = info.state;
         turnColour = info.turnColour;
@@ -110,7 +115,7 @@ public class Board {
                 Debug.Log(PrintMove(move));
             }
             l.Remove(movingTo);
-            RemoveBit(capturedPieceType, enemyColour, movingTo);
+            GetBoard(capturedPieceType).RemoveBit(enemyColour, movingTo);
             ZobristKey ^= Zobrist.zPieces[enemyColour, capturedPieceType, movingTo];
             currentGameState |= (capturedPieceType << 8);
         }
@@ -119,11 +124,16 @@ public class Board {
         if (moveingPieceType == Piece.King) {
             kings[turnColour] = movingTo;
         } else {
-            GetList(moveingPieceType, turnColour).Move(movingFrom, movingTo);
+            PieceList x = GetList(moveingPieceType, turnColour);
+            if (x == null) {
+                Debug.Log(PrintMove(move));
+            }
+            x.Move(movingFrom, movingTo);
         }
         //other piece movement
-        RemoveBit(moveingPieceType, turnColour, movingFrom);
-        AddBit(moveingPieceType, turnColour, movingTo);
+        GetBoard(moveingPieceType).RemoveBit(turnColour, movingFrom);
+        GetBoard(moveingPieceType).AddBit(turnColour, movingTo);
+
         ZobristKey ^= Zobrist.zPieces[turnColour, moveingPieceType, movingFrom];
         ZobristKey ^= Zobrist.zPieces[turnColour, moveingPieceType, movingTo];
         squares[movingTo] = squares[movingFrom];
@@ -133,7 +143,8 @@ public class Board {
         if (IsPromotion) {
             //remove old pawn
             pawnsList[turnColour].Remove(movingTo);
-            RemoveBit(Piece.Pawn, turnColour, movingTo);
+            GetBoard(Piece.Pawn).RemoveBit(turnColour, movingTo);
+            // RemoveBit(GetBoard(Piece.Pawn, turnColour), movingTo);
             ZobristKey ^= Zobrist.zPieces[turnColour, Piece.Pawn, movingTo];
             squares[movingTo] = 0;
             //get new promotion piece
@@ -147,13 +158,13 @@ public class Board {
 
             //Add promotion piece back to square
             GetList(newPieceType, turnColour).Push(movingTo);
-            AddBit(newPieceType, turnColour, movingTo);
+            GetBoard(newPieceType).AddBit(turnColour, movingTo);
+            //AddBit(GetBoard(newPieceType, turnColour), movingTo);
 
             int col = turnColour == 0 ? Piece.White : Piece.Black;
             squares[movingTo] = col | newPieceType;
             ZobristKey ^= Zobrist.zPieces[turnColour, newPieceType, movingTo];
         }
-
         //castling
         if (moveType == 2) {
             bool kingSide = movingTo == 6 || movingTo == 62;
@@ -162,8 +173,8 @@ public class Board {
             squares[rookTo] = squares[rookFrom];
             squares[rookFrom] = 0;
             rooksList[turnColour].Move(rookFrom, rookTo);
-            RemoveBit(Piece.Rook, turnColour, rookFrom);
-            AddBit(Piece.Rook, turnColour, rookTo);
+            GetBoard(Piece.Rook).RemoveBit(turnColour, rookFrom);
+            GetBoard(Piece.Rook).AddBit(turnColour, rookTo);
             ZobristKey ^= Zobrist.zPieces[turnColour, Piece.Rook, rookFrom];
             ZobristKey ^= Zobrist.zPieces[turnColour, Piece.Rook, rookTo];
         }
@@ -172,7 +183,7 @@ public class Board {
             int EnPawnSquare = (turnColour == 0) ? oldEnpassantFile + 31 : oldEnpassantFile + 23;
             squares[EnPawnSquare] = 0;
             pawnsList[enemyColour].Remove(EnPawnSquare);
-            RemoveBit(Piece.Pawn, enemyColour, EnPawnSquare);
+            GetBoard(Piece.Pawn).RemoveBit(enemyColour, EnPawnSquare);
             ZobristKey ^= Zobrist.zPieces[enemyColour, Piece.Pawn, EnPawnSquare];
         }
         //enpass existed, remove it
@@ -251,8 +262,11 @@ public class Board {
         } else {
             GetList(moveingPieceType, turnColour).Move(movingTo, movingFrom);
         }
-        RemoveBit(moveingPieceType, turnColour, movingTo);
-        AddBit(moveingPieceType, turnColour, movingFrom);
+        GetBoard(moveingPieceType).RemoveBit(turnColour, movingTo);
+        GetBoard(moveingPieceType).AddBit(turnColour, movingFrom);
+
+        //RemoveBit(GetBoard(moveingPieceType, turnColour), movingTo);
+        //AddBit(GetBoard(moveingPieceType, turnColour), movingFrom);
         ZobristKey ^= Zobrist.zPieces[turnColour, moveingPieceType, movingTo];
         ZobristKey ^= Zobrist.zPieces[turnColour, moveingPieceType, movingFrom];
         squares[movingFrom] = squares[movingTo];
@@ -260,7 +274,8 @@ public class Board {
 
         //replace taken piece
         if (capturedPiece != 0) {
-            AddBit(Piece.Type(capturedPiece), enemyColour, movingTo);
+            GetBoard(Piece.Type(capturedPiece)).AddBit(enemyColour, movingTo);
+            //AddBit(GetBoard(Piece.Type(capturedPiece), enemyColour), movingTo);
             ZobristKey ^= Zobrist.zPieces[enemyColour, Piece.Type(capturedPiece), movingTo];
             PieceList pieceList = GetList(Piece.Type(capturedPiece), enemyColour);
             pieceList.Push(movingTo);
@@ -276,19 +291,24 @@ public class Board {
             squares[rookTo] = 0;
             PieceList rookList = rooksList[turnColour];
             rookList.Move(rookTo, rookFrom);
-            RemoveBit(Piece.Rook, turnColour, rookTo);
-            AddBit(Piece.Rook, turnColour, rookFrom);
+
+            GetBoard(Piece.Rook).RemoveBit(turnColour, rookTo);
+            GetBoard(Piece.Rook).AddBit(turnColour, rookFrom);
+
+            // RemoveBit(GetBoard(Piece.Rook, turnColour),rookTo);
+            //AddBit(GetBoard(Piece.Rook, turnColour), rookFrom);
             ZobristKey ^= Zobrist.zPieces[turnColour, Piece.Rook, rookTo];
             ZobristKey ^= Zobrist.zPieces[turnColour, Piece.Rook, rookFrom];
         }
 
         //if promotion change piece back to pawn
         if (IsPromotion) {
-            RemoveBit(moveingPieceType, turnColour, movingFrom);
+            GetBoard(moveingPieceType).RemoveBit(turnColour, movingFrom);
+            // RemoveBit( GetBoard(moveingPieceType, turnColour), movingFrom);
             GetList(moveingPieceType, turnColour).Remove(movingFrom);
             ZobristKey ^= Zobrist.zPieces[turnColour, moveingPieceType, movingFrom];
-
-            AddBit(Piece.Pawn, turnColour, movingFrom);
+            GetBoard(Piece.Pawn).AddBit(turnColour, movingFrom);
+            // AddBit(GetBoard(Piece.Pawn, turnColour), movingFrom);
             pawnsList[turnColour].Push(movingFrom);
             ZobristKey ^= Zobrist.zPieces[turnColour, Piece.Pawn, movingFrom];
 
@@ -302,7 +322,8 @@ public class Board {
             int col = enemyColour == 0 ? Piece.White : Piece.Black;
             squares[EnPawnSquare] = col | Piece.Pawn;
             pawnsList[enemyColour].Push(EnPawnSquare);
-            AddBit(Piece.Pawn, enemyColour, EnPawnSquare);
+            GetBoard(Piece.Pawn).AddBit(enemyColour, EnPawnSquare);
+            //AddBit(GetBoard(Piece.Pawn, enemyColour), EnPawnSquare);
             ZobristKey ^= Zobrist.zPieces[enemyColour, Piece.Pawn, EnPawnSquare];
         }
 
@@ -323,25 +344,15 @@ public class Board {
         return null;
     }
 
-    public void AddBit(int type, int col, int i) {
+    public Bitboard GetBoard(int type) {
         switch (type) {
-            case Piece.Pawn: pawnsBoard[col] |= bitArray[i]; break;
-            case Piece.Knight: knightsBoard[col] |= bitArray[i]; break;
-            case Piece.Rook: rooksBoard[col] |= bitArray[i]; break;
-            case Piece.Bishop: bishopsBoard[col] |= bitArray[i]; break;
-            case Piece.Queen: queensBoard[col] |= bitArray[i]; break;
-            case Piece.King: kingsBoard[col] |= bitArray[i]; break;
-        }
-    }
-
-    public void RemoveBit(int type, int col, int i) {
-        switch (type) {
-            case Piece.Pawn: pawnsBoard[col] ^= bitArray[i]; break;
-            case Piece.Knight: knightsBoard[col] ^= bitArray[i]; break;
-            case Piece.Rook: rooksBoard[col] ^= bitArray[i]; break;
-            case Piece.Bishop: bishopsBoard[col] ^= bitArray[i]; break;
-            case Piece.Queen: queensBoard[col] ^= bitArray[i]; break;
-            case Piece.King: kingsBoard[col] ^= bitArray[i]; break;
+            case Piece.Pawn: return pawnsBoard;
+            case Piece.Knight: return knightsBoard;
+            case Piece.Rook: return rooksBoard;
+            case Piece.Bishop: return bishopsBoard;
+            case Piece.Queen: return queensBoard;
+            case Piece.King: return kingsBoard;
+            default: return null;
         }
     }
 

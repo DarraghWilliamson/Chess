@@ -1,11 +1,8 @@
-﻿using System;
-using System.Runtime;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using static Utils;
-public class PieceObject : MonoBehaviour {
 
+public class PieceObject : MonoBehaviour {
     public bool inDanger, selected, isPromotionPiece;
     public int colour = 0;
     public int type = 0;
@@ -28,7 +25,7 @@ public class PieceObject : MonoBehaviour {
         if (!gameLogic.MyTurn()) {
             return;
         }
-        if(gameDisplay.SelectedPeice != null && (assignedMove != 0 || promotion)) {
+        if (gameDisplay.SelectedPeice != null && (assignedMove != 0 || promotion)) {
             if (promotion) {
                 SelectPromote();
                 return;
@@ -41,22 +38,22 @@ public class PieceObject : MonoBehaviour {
             gameDisplay.SelectNew(this);
         }
     }
-    
+
     public void SetTile(Tile tile) {
         this.tile = tile;
     }
 
-    void SelectPromote() {
+    private void SelectPromote() {
         List<GameObject> con;
         con = gameLogic.board.turnColour == 0 ? gameDisplay.PromotionWhite : gameDisplay.PromotionBlack;
-        for(int i = 0; i<con.Count;i++) con[i].SetActive(true);
+        for (int i = 0; i < con.Count; i++) con[i].SetActive(true);
         gameDisplay.showingPromotionOptions = true;
         gameDisplay.promotingPawn = this.gameObject;
 
-        foreach(ushort m in posibilities) {
+        foreach (ushort m in posibilities) {
             switch (GetPromotionType(m)) { // 0:Knight, 1:bishop, 2:rook, 3:queen
                 case 3: con[3].GetComponent<PieceObject>().assignedMove = m; con[3].GetComponent<PieceObject>().isPromotionPiece = true; break;
-                case 1:con[2].GetComponent<PieceObject>().assignedMove = m; con[2].GetComponent<PieceObject>().isPromotionPiece = true; break;
+                case 1: con[2].GetComponent<PieceObject>().assignedMove = m; con[2].GetComponent<PieceObject>().isPromotionPiece = true; break;
                 case 2: con[0].GetComponent<PieceObject>().assignedMove = m; con[0].GetComponent<PieceObject>().isPromotionPiece = true; break;
                 case 0: con[1].GetComponent<PieceObject>().assignedMove = m; con[1].GetComponent<PieceObject>().isPromotionPiece = true; break;
             }
@@ -67,14 +64,14 @@ public class PieceObject : MonoBehaviour {
         if (p.colour == this.colour) return false; else return true;
     }
 
-    void OnMouseOver() {
+    private void OnMouseOver() {
         if (inDanger) return;
         if (gameLogic == null)
-        if (gameLogic.playerColour != colour) return;
+            if (gameLogic.playerColour != colour) return;
         GetComponent<Renderer>().material = greenOutline;
     }
 
-    void OnMouseExit() {
+    private void OnMouseExit() {
         if (inDanger) return;
         if (!selected) GetComponent<Renderer>().material = standard;
     }
@@ -86,13 +83,11 @@ public class PieceObject : MonoBehaviour {
         gameDisplay.ShowMoves(tile.num);
     }
 
-    
-
     public void Unselect() {
         tile.Hide();
         List<GameObject> con = gameLogic.board.turnColour == 0 ? gameDisplay.PromotionWhite : gameDisplay.PromotionBlack;
         foreach (GameObject g in con) g.SetActive(false);
-        
+
         selected = false;
         GetComponent<Renderer>().material = standard;
         transform.position = new Vector3(transform.position.x, 0, transform.position.z);
@@ -125,6 +120,4 @@ public class PieceObject : MonoBehaviour {
             gameDisplay.deadBlack++;
         }
     }
-
-
 }

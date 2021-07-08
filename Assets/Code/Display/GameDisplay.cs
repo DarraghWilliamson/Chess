@@ -1,9 +1,8 @@
-﻿using System.Collections;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using UnityEngine;
 using static Utils;
-public class GameDisplay {
 
+public class GameDisplay {
     public static GameDisplay instance;
     public int deadBlack = 0;
     public int deadWhite = 0;
@@ -26,7 +25,7 @@ public class GameDisplay {
         deathWhite = CreateDeathVectors(new Vector3(-70, 0, 110), 20, -70);
     }
 
-    readonly Dictionary<int, string> dictString = new Dictionary<int, string>() {
+    private readonly Dictionary<int, string> dictString = new Dictionary<int, string>() {
         [Piece.Pawn] = "Pawn",
         [Piece.Bishop] = "Bishop",
         [Piece.Knight] = "Knight",
@@ -55,7 +54,7 @@ public class GameDisplay {
         piece.GetComponent<PieceObject>().type = type;
         tile.piece.gameLogic = GameLogic.instance;
         tile.piece.gameDisplay = this;
-        
+
         switch (type) {
             case Piece.King: kings[col] = piece; break;
             case Piece.Pawn: pawns[col].Add(piece); break;
@@ -63,13 +62,12 @@ public class GameDisplay {
             case Piece.Rook: rooks[col].Add(piece); break;
             case Piece.Bishop: bishops[col].Add(piece); break;
             case Piece.Queen: queens[col].Add(piece); break;
-
         }
     }
 
     public void WasPromotion() {
         promotingPawn.gameObject.SetActive(false);
-        foreach(GameObject g  in PromotionBlack) {
+        foreach (GameObject g in PromotionBlack) {
             g.SetActive(false);
         }
         foreach (GameObject g in PromotionWhite) {
@@ -79,13 +77,13 @@ public class GameDisplay {
         promotingPawn = null;
     }
 
-    //probbaly better ways of doing this 
+    //probbaly better ways of doing this
     public void RefreshDisplay(Board board) {
         deadBlack = 0;
         deadWhite = 0;
         Unselect();
         Clear(board);
-        
+
         for (int i = 0; i < 2; i++) {
             PieceObject king = kings[i].GetComponent<PieceObject>();
             int ind = board.kings[i];
@@ -99,22 +97,17 @@ public class GameDisplay {
         PieceList[] allLists = board.allLists;
         for (int objList = 0; objList < allLists.Length; objList++) {
             for (int obj = 0; obj < allLists[objList].length; obj++) {
-
-
-
                 PieceObject piece = allPieces[objList][obj].GetComponent<PieceObject>();
                 int ind = allLists[objList].pieces[obj];
                 piece.SetTile(tiles[ind]);
                 tiles[ind].SetPiece(piece);
                 piece.gameObject.SetActive(true);
                 allPieces[objList][obj].transform.position = tiles[ind].transform.position;
-
-
             }
         }
     }
 
-    void Clear(Board board) {
+    private void Clear(Board board) {
         for (int i = 0; i < 64; i++) {
             tiles[i].piece = null;
         }
@@ -133,8 +126,8 @@ public class GameDisplay {
             if (GetStartSquare(move) == num) {
                 int end = GetEndSquare(move);
                 bool promotion = false;
-                if(GetMoveType(move) == 3) promotion = true;
-                
+                if (GetMoveType(move) == 3) promotion = true;
+
                 if (tiles[end].piece != null) {
                     tiles[end].ShowTakeable();
                     if (promotion) {
@@ -143,8 +136,6 @@ public class GameDisplay {
                     } else {
                         tiles[end].piece.assignedMove = move;
                     }
-                    
-                    
                 } else {
                     tiles[end].ShowMoveable();
                     if (promotion) {
@@ -152,9 +143,7 @@ public class GameDisplay {
                     } else {
                         tiles[end].assignedMove = move;
                     }
-
                 }
-                
             }
         }
     }
@@ -188,5 +177,4 @@ public class GameDisplay {
         }
         return vector3s;
     }
-
 }

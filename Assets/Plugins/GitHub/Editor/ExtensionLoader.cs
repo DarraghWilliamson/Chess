@@ -1,23 +1,19 @@
+using System;
+using System.IO;
 using UnityEditor;
 using UnityEngine;
-using System.IO;
-using System;
 
-namespace GitHub.Unity
-{
+namespace GitHub.Unity {
+
     [InitializeOnLoad]
-    public class ExtensionLoader : ScriptableSingleton<ExtensionLoader>
-    {
+    public class ExtensionLoader : ScriptableSingleton<ExtensionLoader> {
         [SerializeField] private bool initialized = true;
 
-        public bool Initialized
-        {
-            get
-            {
+        public bool Initialized {
+            get {
                 return initialized;
             }
-            set
-            {
+            set {
                 initialized = value;
                 Save(true);
             }
@@ -33,17 +29,14 @@ namespace GitHub.Unity
         private const string GITHUB_UNITY_DISABLE = "GITHUB_UNITY_DISABLE";
         private static bool IsDisabled { get { return Environment.GetEnvironmentVariable(GITHUB_UNITY_DISABLE) == "1"; } }
 
-        static ExtensionLoader()
-        {
-            if (IsDisabled)
-            {
+        static ExtensionLoader() {
+            if (IsDisabled) {
                 return;
             }
             EditorApplication.update += Initialize;
         }
 
-        private static void Initialize()
-        {
+        private static void Initialize() {
             EditorApplication.update -= Initialize;
 
             // we're always doing this right now because if the plugin gets updated all the meta files will be disabled and we need to re-enable them
@@ -56,11 +49,9 @@ namespace GitHub.Unity
                 //ExtensionLoader.instance.Initialized = true;
                 AssetDatabase.SaveAssets();
             }
-
         }
 
-        private static void ToggleAssemblies()
-        {
+        private static void ToggleAssemblies() {
             var path = inSourceMode ? sourceModePath : realPath;
 #if NET_4_6
             ToggleAssemblies(path, assemblies20, false);
@@ -71,19 +62,15 @@ namespace GitHub.Unity
 #endif
         }
 
-        private static void ToggleAssemblies(string path, string[] assemblies, bool enable)
-        {
-            foreach (var file in assemblies)
-            {
+        private static void ToggleAssemblies(string path, string[] assemblies, bool enable) {
+            foreach (var file in assemblies) {
                 var filepath = path + file;
                 PluginImporter importer = AssetImporter.GetAtPath(filepath) as PluginImporter;
-                if (importer == null)
-                {
+                if (importer == null) {
                     Debug.LogFormat("GitHub for Unity: Could not find importer for {0}. Some functionality may fail.", filepath);
                     continue;
                 }
-                if (importer.GetCompatibleWithEditor() != enable)
-                {
+                if (importer.GetCompatibleWithEditor() != enable) {
                     importer.SetCompatibleWithEditor(enable);
                     importer.SaveAndReimport();
                 }

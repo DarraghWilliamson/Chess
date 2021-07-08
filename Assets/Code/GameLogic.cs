@@ -28,8 +28,7 @@ public class GameLogic {
         table = new TranspositionTable(board, 64000);
         Zobrist.FillzProperties();
         AiOn = false;
-        LoadFen(FEN.FenArray[2]);
-        //LoadFen(FEN.startFen);
+        LoadFen(FEN.startFen);
     }
 
     public void LoadFen(string i) {
@@ -55,12 +54,7 @@ public class GameLogic {
     }
 
     public void Tests() {
-        Perft.MoveTester(4);
-
-        //Perft.MoveTestSplit(4);
-        //LoadFen(FEN.FenArray[3]);
-        //Perft.MoveTestSplit(2);
-        //Perft.RunTests();
+        Perft.MoveTestSplit(7);
     }
 
     public void ToggleAi() {

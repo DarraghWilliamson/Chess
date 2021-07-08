@@ -1,9 +1,7 @@
 ﻿using UnityEngine;
-using System.Collections;
 
 [AddComponentMenu("Camera-Control/Mouse Orbit with zoom")]
 public class MouseOrbitImproved : MonoBehaviour {
-
     public Transform target;
     private float distance = 150f;
     private float xSpeed = 37f;
@@ -15,14 +13,14 @@ public class MouseOrbitImproved : MonoBehaviour {
 
     private new Rigidbody rigidbody;
 
-    float x = 0.0f;
-    float y = 0.0f;
+    private float x = 0.0f;
+    private float y = 0.0f;
 
-    float mouseX = 0f;
-    float mouseY = 0f;
+    private float mouseX = 0f;
+    private float mouseY = 0f;
 
     // Use this for initialization
-    void Start() {
+    private void Start() {
         Vector3 angles = transform.eulerAngles;
         x = angles.y;
         y = angles.x;
@@ -35,7 +33,7 @@ public class MouseOrbitImproved : MonoBehaviour {
         }
     }
 
-    void LateUpdate() {
+    private void LateUpdate() {
         if (target) {
             GetMouseButtonDown_XY();
             float d = distance / 50;
@@ -67,8 +65,9 @@ public class MouseOrbitImproved : MonoBehaviour {
         return Mathf.Clamp(angle, min, max);
     }
 
-    Vector3 mousePosPrev;
-    void GetMouseButtonDown_XY() {
+    private Vector3 mousePosPrev;
+
+    private void GetMouseButtonDown_XY() {
         if (Input.GetMouseButtonDown(2)) {
             mousePosPrev = Camera.main.ScreenToViewportPoint(Input.mousePosition);
         }
