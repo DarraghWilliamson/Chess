@@ -11,7 +11,7 @@ public class MouseOrbitImproved : MonoBehaviour {
     public readonly float distanceMin = 100f;
     private float distanceMax = 250f;
 
-    private new Rigidbody rigidbody;
+    private Rigidbody rigidbody;
 
     private float x = 0.0f;
     private float y = 0.0f;
@@ -21,6 +21,7 @@ public class MouseOrbitImproved : MonoBehaviour {
 
     // Use this for initialization
     private void Start() {
+        rigidbody = new Rigidbody();
         Vector3 angles = transform.eulerAngles;
         x = angles.y;
         y = angles.x;

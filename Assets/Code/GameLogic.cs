@@ -54,7 +54,7 @@ public class GameLogic {
     }
 
     public void Tests() {
-        Perft.MoveTestSplit(7);
+        Perft.RunTests();
     }
 
     public void ToggleAi() {

@@ -25,7 +25,6 @@ public class Board {
     public int Enpassant, MoveCounter, turnColour, enemyColour, captures, currentGameState;
     public int[] kings, squares;
     public bool inCheck;
-    private ulong[] Bitboards, WhitePieces, BlackPieces, AllPieces;
 
     public Bitboard pawnsBoard, knightsBoard, rooksBoard, bishopsBoard, queensBoard, kingsBoard;
     public Bitboard[] allBoards;
@@ -39,11 +38,6 @@ public class Board {
     }
 
     public void LoadInfo(string fen) {
-        Bitboards = new ulong[12];
-        WhitePieces = new ulong[64];
-        BlackPieces = new ulong[64];
-        AllPieces = new ulong[64];
-
         squares = new int[64];
         kings = new int[2];
         ZobristKey = 0;
@@ -107,7 +101,6 @@ public class Board {
         gameStates.Push(oldState);
         int Castling = oldCastling;
         currentGameState = 0;
-
         //if you captured a piece remove it from the list
         if (capturedPieceType != 0) {
             PieceList l = GetList(capturedPieceType, enemyColour);
@@ -119,7 +112,6 @@ public class Board {
             ZobristKey ^= Zobrist.zPieces[enemyColour, capturedPieceType, movingTo];
             currentGameState |= (capturedPieceType << 8);
         }
-
         //move pieces around in the lists
         if (moveingPieceType == Piece.King) {
             kings[turnColour] = movingTo;
@@ -133,7 +125,6 @@ public class Board {
         //other piece movement
         GetBoard(moveingPieceType).RemoveBit(turnColour, movingFrom);
         GetBoard(moveingPieceType).AddBit(turnColour, movingTo);
-
         ZobristKey ^= Zobrist.zPieces[turnColour, moveingPieceType, movingFrom];
         ZobristKey ^= Zobrist.zPieces[turnColour, moveingPieceType, movingTo];
         squares[movingTo] = squares[movingFrom];
@@ -144,7 +135,6 @@ public class Board {
             //remove old pawn
             pawnsList[turnColour].Remove(movingTo);
             GetBoard(Piece.Pawn).RemoveBit(turnColour, movingTo);
-            // RemoveBit(GetBoard(Piece.Pawn, turnColour), movingTo);
             ZobristKey ^= Zobrist.zPieces[turnColour, Piece.Pawn, movingTo];
             squares[movingTo] = 0;
             //get new promotion piece
@@ -155,12 +145,9 @@ public class Board {
                 case 2: newPieceType = Piece.Rook; break;
                 case 3: newPieceType = Piece.Queen; break;
             }
-
             //Add promotion piece back to square
             GetList(newPieceType, turnColour).Push(movingTo);
             GetBoard(newPieceType).AddBit(turnColour, movingTo);
-            //AddBit(GetBoard(newPieceType, turnColour), movingTo);
-
             int col = turnColour == 0 ? Piece.White : Piece.Black;
             squares[movingTo] = col | newPieceType;
             ZobristKey ^= Zobrist.zPieces[turnColour, newPieceType, movingTo];
@@ -215,10 +202,6 @@ public class Board {
         ZobristKey ^= Zobrist.zTurnColour;
         turnColour = turnColour == 0 ? 1 : 0;
         enemyColour = enemyColour == 0 ? 1 : 0;
-        /*if (ZobristKey != Zobrist.GetZobristHash(this)) {
-            Debug.Log("Zobrist key error\n" + ZobristKey + "\n" + Zobrist.GetZobristHash(this));
-            Debug.Log(PrintMove(move)+" P:"+moveingPieceType);
-        }*/
         if (gameLogic.show) gameLogic.EndTurn();
     }
 
@@ -264,9 +247,6 @@ public class Board {
         }
         GetBoard(moveingPieceType).RemoveBit(turnColour, movingTo);
         GetBoard(moveingPieceType).AddBit(turnColour, movingFrom);
-
-        //RemoveBit(GetBoard(moveingPieceType, turnColour), movingTo);
-        //AddBit(GetBoard(moveingPieceType, turnColour), movingFrom);
         ZobristKey ^= Zobrist.zPieces[turnColour, moveingPieceType, movingTo];
         ZobristKey ^= Zobrist.zPieces[turnColour, moveingPieceType, movingFrom];
         squares[movingFrom] = squares[movingTo];
@@ -275,7 +255,6 @@ public class Board {
         //replace taken piece
         if (capturedPiece != 0) {
             GetBoard(Piece.Type(capturedPiece)).AddBit(enemyColour, movingTo);
-            //AddBit(GetBoard(Piece.Type(capturedPiece), enemyColour), movingTo);
             ZobristKey ^= Zobrist.zPieces[enemyColour, Piece.Type(capturedPiece), movingTo];
             PieceList pieceList = GetList(Piece.Type(capturedPiece), enemyColour);
             pieceList.Push(movingTo);
@@ -291,12 +270,8 @@ public class Board {
             squares[rookTo] = 0;
             PieceList rookList = rooksList[turnColour];
             rookList.Move(rookTo, rookFrom);
-
             GetBoard(Piece.Rook).RemoveBit(turnColour, rookTo);
             GetBoard(Piece.Rook).AddBit(turnColour, rookFrom);
-
-            // RemoveBit(GetBoard(Piece.Rook, turnColour),rookTo);
-            //AddBit(GetBoard(Piece.Rook, turnColour), rookFrom);
             ZobristKey ^= Zobrist.zPieces[turnColour, Piece.Rook, rookTo];
             ZobristKey ^= Zobrist.zPieces[turnColour, Piece.Rook, rookFrom];
         }
@@ -304,14 +279,11 @@ public class Board {
         //if promotion change piece back to pawn
         if (IsPromotion) {
             GetBoard(moveingPieceType).RemoveBit(turnColour, movingFrom);
-            // RemoveBit( GetBoard(moveingPieceType, turnColour), movingFrom);
             GetList(moveingPieceType, turnColour).Remove(movingFrom);
             ZobristKey ^= Zobrist.zPieces[turnColour, moveingPieceType, movingFrom];
             GetBoard(Piece.Pawn).AddBit(turnColour, movingFrom);
-            // AddBit(GetBoard(Piece.Pawn, turnColour), movingFrom);
             pawnsList[turnColour].Push(movingFrom);
             ZobristKey ^= Zobrist.zPieces[turnColour, Piece.Pawn, movingFrom];
-
             int col = turnColour == 0 ? Piece.White : Piece.Black;
             squares[movingFrom] = Piece.Pawn | col;
         }
@@ -323,13 +295,10 @@ public class Board {
             squares[EnPawnSquare] = col | Piece.Pawn;
             pawnsList[enemyColour].Push(EnPawnSquare);
             GetBoard(Piece.Pawn).AddBit(enemyColour, EnPawnSquare);
-            //AddBit(GetBoard(Piece.Pawn, enemyColour), EnPawnSquare);
             ZobristKey ^= Zobrist.zPieces[enemyColour, Piece.Pawn, EnPawnSquare];
         }
 
         currentGameState = oldState;
-        //if (ZobristKey != Zobrist.GetZobristHash(this)) Debug.Log("Zobrist key error\n" + ZobristKey + "\n" + Zobrist.GetZobristHash(this));
-
         if (gameMoves.Count != 0) gameMoves.Pop();
         if (gameLogic.show) gameLogic.EndTurn();
     }

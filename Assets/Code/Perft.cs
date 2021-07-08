@@ -135,7 +135,7 @@ public static class Perft {
             sb.Append(GetBoardRep(GetEndSquare(allMoves[i])));
             sb.Append(PromotionString(allMoves[i]) + ": " + nodes + "\n");
         }
-        UnityEngine.Debug.Log(total + " total moves" + " in " + watch.ElapsedMilliseconds + " ms\n" + sb.ToString());
+        UnityEngine.Debug.Log(total +" "+ watch.ElapsedMilliseconds + " ms\n" + sb.ToString());
         watch.Stop();
     }
 
@@ -169,9 +169,7 @@ public static class Perft {
         gameLogic.show = false;
         var watch = Stopwatch.StartNew();
         List<int> allMoves = gameLogic.board.GenerateMoves();
-        //for (int i = 0; i < allMoves.Count; i++) {
         for (int i = 36; i < 38; i++) {
-            //UnityEngine.Debug.Log(i + " " + PrintMoveRep(allMoves[i]));
             nodes = Split2ind(depth, allMoves[i], gameLogic.board, i);
             total += nodes;
             sb.Append(GetBoardRep(GetStartSquare(allMoves[i])));
@@ -218,10 +216,7 @@ public static class Perft {
 
         StringBuilder b = new StringBuilder();
         b.Append(moves + "moves, ");
-        b.Append(watch.ElapsedMilliseconds + "ms - ");
-        b.Append(gen.ElapsedMilliseconds + "moveGen - ");
-        b.Append(move.ElapsedMilliseconds + "move - ");
-        b.Append(undo.ElapsedMilliseconds + "undo - ");
+        b.Append(watch.ElapsedMilliseconds + " ms");
         UnityEngine.Debug.Log(b.ToString());
     }
 
